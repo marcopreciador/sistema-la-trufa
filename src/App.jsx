@@ -481,8 +481,8 @@ function POSApp() {
   // --- RENDER DASHBOARD ---
   if (!activeOrderId) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
-        <header className="mb-8 flex justify-between items-start">
+      <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+        <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">La Trufa</h1>
             <p className="text-gray-500 mt-1">Gestión de Espacios</p>
@@ -537,7 +537,7 @@ function POSApp() {
         </header>
 
         {activeTab === 'Salón / Mesas' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {tables.map(table => (
               <TableCard
                 key={table.id}
@@ -649,11 +649,11 @@ function POSApp() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-100 overflow-hidden">
       {/* Main Content - Menu */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="px-8 pt-8 pb-4 bg-gray-100 z-10">
-          <div className="flex justify-between items-center mb-6">
+      <main className="flex-1 flex flex-col h-full overflow-hidden w-full">
+        <header className="px-4 md:px-8 pt-4 md:pt-8 pb-4 bg-gray-100 z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
             <div className="flex items-center space-x-4">
               <button
                 onClick={handleBackToTables}
@@ -724,8 +724,8 @@ function POSApp() {
           />
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 pt-0">
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pb-20">
             {filteredProducts.map(product => (
               <ProductCardItem
                 key={product.id}
@@ -741,7 +741,7 @@ function POSApp() {
       </main>
 
       {/* Sidebar - Cart */}
-      <aside className="w-96 h-full z-20">
+      <aside className="w-full md:w-96 h-auto md:h-full z-20 border-t md:border-t-0 md:border-l border-gray-200 bg-white shadow-xl md:shadow-none">
         <Cart
           items={activeOrder.items}
           activeOrder={activeOrder}

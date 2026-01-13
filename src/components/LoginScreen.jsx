@@ -70,7 +70,7 @@ export function LoginScreen() {
     }, [selectedUser, pin]); // Re-bind when pin changes to capture current state if needed, though functional updates are safer.
 
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 animate-fade-in">
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 md:p-8 animate-fade-in">
             <div className="w-full max-w-4xl flex flex-col items-center">
 
                 {/* Header */}
@@ -81,7 +81,7 @@ export function LoginScreen() {
 
                 {!selectedUser ? (
                     /* User Selection */
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
                         {users.map(user => (
                             <button
                                 key={user.id}
@@ -121,8 +121,8 @@ export function LoginScreen() {
                                 <div
                                     key={i}
                                     className={`w-4 h-4 rounded-full transition-all ${i < pin.length
-                                            ? error ? 'bg-red-500' : 'bg-blue-500'
-                                            : 'bg-gray-600'
+                                        ? error ? 'bg-red-500' : 'bg-blue-500'
+                                        : 'bg-gray-600'
                                         }`}
                                 />
                             ))}
