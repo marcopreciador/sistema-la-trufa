@@ -14,12 +14,6 @@ export function ProductProvider({ children }) {
         return savedProducts ? JSON.parse(savedProducts) : defaultProducts;
     });
 
-    // Sales History State
-    const [salesHistory, setSalesHistory] = useState(() => {
-        const savedSales = localStorage.getItem('la-trufa-sales');
-        return savedSales ? JSON.parse(savedSales) : [];
-    });
-
     // Customers State
     const [customers, setCustomers] = useState(() => {
         const savedCustomers = localStorage.getItem('la-trufa-customers');
@@ -67,9 +61,7 @@ export function ProductProvider({ children }) {
         localStorage.setItem('la-trufa-products', JSON.stringify(products));
     }, [products]);
 
-    useEffect(() => {
-        localStorage.setItem('la-trufa-sales', JSON.stringify(salesHistory));
-    }, [salesHistory]);
+    // salesHistory effect removed
 
     useEffect(() => {
         localStorage.setItem('la-trufa-customers', JSON.stringify(customers));
@@ -115,59 +107,8 @@ export function ProductProvider({ children }) {
         }
     };
 
-    // Sales Actions
-    // Sales Actions
-    const addSale = (sale) => {
-        // --- SNIPER INJECTION START ---
-        try {
-            const currentInv = JSON.parse(localStorage.getItem('la-trufa-inventory') || '[]');
-            const currentProds = JSON.parse(localStorage.getItem('la-trufa-products') || '[]');
-            let stockChanged = false;
-
-            // sale.items comes from the cart
-            if (sale.items && Array.isArray(sale.items)) {
-                sale.items.forEach(item => {
-                    const masterProd = currentProds.find(p => p.name === item.name); // Busca por nombre 
-                    if (masterProd && masterProd.recipe) {
-                        masterProd.recipe.forEach(ing => {
-                            const stockItem = currentInv.find(i => i.name === ing.name); // Busca insumo por nombre 
-                            if (stockItem) {
-                                const deduction = (parseFloat(ing.quantity) * item.quantity);
-                                stockItem.stock -= deduction;
-                                stockChanged = true;
-                                console.log('Descontado: ' + deduction + ' de ' + ing.name + '. Nuevo: ' + stockItem.stock);
-                            }
-                        });
-                    }
-                });
-
-                if (stockChanged) {
-                    localStorage.setItem('la-trufa-inventory', JSON.stringify(currentInv));
-                    // Also update state to keep UI in sync
-                    setInventory(currentInv);
-                    console.log('Inventario actualizado y guardado (Sniper Mode).');
-                }
-            }
-        } catch (e) {
-            console.error("Sniper error:", e);
-        }
-        // --- SNIPER INJECTION END ---
-
-        const newSale = {
-            id: Date.now(),
-            date: new Date().toISOString(),
-            method: 'Efectivo', // Default for now
-            status: 'completed', // Default status
-            ...sale
-        };
-        setSalesHistory([newSale, ...salesHistory]); // Newest first
-    };
-
-    const cancelSale = (saleId) => {
-        setSalesHistory(prev => prev.map(sale =>
-            sale.id === saleId ? { ...sale, status: 'cancelled' } : sale
-        ));
-    };
+    // Sales Actions removed (moved to SalesContext)
+    // Inventory logic moved to processSaleInventory (below)
 
     // Customer Actions
     const addCustomer = (customer) => {
@@ -224,9 +165,43 @@ export function ProductProvider({ children }) {
         setInventory(inventory.filter(i => i.id !== id));
     };
 
+    // Process Inventory for Sale (Sniper Mode Logic)
+    const processSaleInventory = (items) => {
+        try {
+            const currentInv = JSON.parse(localStorage.getItem('la-trufa-inventory') || '[]');
+            const currentProds = JSON.parse(localStorage.getItem('la-trufa-products') || '[]');
+            let stockChanged = false;
+
+            if (items && Array.isArray(items)) {
+                items.forEach(item => {
+                    const masterProd = currentProds.find(p => p.name === item.name);
+                    if (masterProd && masterProd.recipe) {
+                        masterProd.recipe.forEach(ing => {
+                            const stockItem = currentInv.find(i => i.name === ing.name);
+                            if (stockItem) {
+                                const deduction = (parseFloat(ing.quantity) * item.quantity);
+                                stockItem.stock -= deduction;
+                                stockChanged = true;
+                                console.log('Descontado: ' + deduction + ' de ' + ing.name + '. Nuevo: ' + stockItem.stock);
+                            }
+                        });
+                    }
+                });
+
+                if (stockChanged) {
+                    localStorage.setItem('la-trufa-inventory', JSON.stringify(currentInv));
+                    setInventory(currentInv);
+                    console.log('Inventario actualizado y guardado (Sniper Mode).');
+                }
+            }
+        } catch (e) {
+            console.error("Sniper error:", e);
+        }
+    };
+
     const deductStock = (soldItems) => {
-        // Legacy function. Logic moved to addSale for reliability.
-        console.log("deductStock called (No-op to prevent double deduction). Logic is now in addSale.");
+        // Legacy alias
+        processSaleInventory(soldItems);
     };
 
     // Draft Actions
@@ -258,9 +233,9 @@ export function ProductProvider({ children }) {
             updateProduct,
             deleteProduct,
             resetToDefault,
-            salesHistory,
-            addSale,
-            cancelSale,
+            // salesHistory removed (moved to SalesContext)
+            // addSale removed (moved to SalesContext)
+            processSaleInventory, // New exposed method
             customers,
             addCustomer,
             updateCustomer,

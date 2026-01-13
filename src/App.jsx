@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProductProvider, useProducts } from './context/ProductContext';
 import { UserProvider, useUsers } from './context/UserContext';
+import { SalesProvider, useSales } from './context/SalesContext';
+import { SalesProvider, useSales } from './context/SalesContext';
 import { ProductCardItem } from './components/ProductCardItem';
 import { Cart } from './components/Cart';
 import { ProductModal } from './components/ProductModal';
@@ -35,8 +37,9 @@ const getInitialTables = () => {
 };
 
 function POSApp() {
-  const { products, addSale, tableDrafts, saveDraft, removeDraft, getNextOrderNumber } = useProducts();
+  const { products, processSaleInventory, tableDrafts, saveDraft, removeDraft, getNextOrderNumber } = useProducts();
   const { currentUser, logout, users } = useUsers(); // Need users to verify admin PIN
+  const { addSale } = useSales();
 
   // Global State
   const [tables, setTables] = useState(() => {
@@ -463,7 +466,7 @@ function POSApp() {
     const orderForTicket = { ...activeOrder, orderNumber: finalOrderNumber };
 
     try {
-      TicketService.generateCustomerTicket(orderForTicket, allItems, grandTotal, currentUser, selectedPaymentMethod, discount, parseFloat(tipAmount || 0));
+      TicketService.printCustomerTicket(orderForTicket, allItems, grandTotal, currentUser, selectedPaymentMethod, discount, parseFloat(tipAmount || 0));
     } catch (error) {
       console.error("Error generating ticket:", error);
       alert("Error al imprimir ticket. La venta se guardará.");
@@ -484,6 +487,7 @@ function POSApp() {
       customer: activeOrder.customer || null
     };
 
+    // 1. Add to Sales History (SalesContext)
     addSale({
       items: allItems,
       subtotal: subtotal,
@@ -498,6 +502,23 @@ function POSApp() {
       tableName: originName,
       status: 'completed'
     });
+
+    // 2. Update Inventory (ProductContext)
+    processSaleInventory(allItems);
+
+    // Clear Table/Order
+    if (typeof activeOrderId === 'number') {
+      setTables(prev => prev.map(t => t.id === activeOrderId ? {
+        ...t,
+        status: 'free',
+        items: [],
+        committedItems: [],
+        orderNumber: null,
+        startTime: null
+      } : t));
+    } else {
+      setDeliveryOrders(prev => prev.filter(o => o.id !== activeOrderId));
+    }
 
     // Defer cleanup: Show Success Modal
     setLastCompletedOrder(completedOrderData);
@@ -533,7 +554,7 @@ function POSApp() {
     const grandTotal = currentTotal + committedTotal - discount;
     const allItems = [...(activeOrder.committedItems || []), ...activeOrder.items];
 
-    TicketService.generateCustomerTicket(activeOrder, allItems, grandTotal, currentUser, 'Pendiente', discount, 0, true);
+    TicketService.printCustomerTicket(activeOrder, allItems, grandTotal, currentUser, 'Pendiente', discount, 0, true);
   };
 
   const handleBackToTables = () => {
@@ -1067,7 +1088,9 @@ function App() {
     <ErrorBoundary>
       <UserProvider>
         <ProductProvider>
-          <POSApp />
+          <SalesProvider>
+            <POSApp />
+          </SalesProvider>
         </ProductProvider>
       </UserProvider>
     </ErrorBoundary>

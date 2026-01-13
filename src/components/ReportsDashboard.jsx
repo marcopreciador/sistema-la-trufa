@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useProducts } from '../context/ProductContext';
+import { useSales } from '../context/SalesContext';
 
 export function ReportsDashboard() {
-    const { salesHistory, expenses, products, cancelSale } = useProducts();
+    const { expenses, products } = useProducts();
+    const { sales: salesHistory, cancelSale } = useSales();
 
     // State for Filters
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
