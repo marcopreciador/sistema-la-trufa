@@ -1,396 +1,250 @@
-import jsPDF from 'jspdf';
+import { PrintConfig } from '../config/PrintConfig';
+
+const formatDate = (date) => {
+    return new Intl.DateTimeFormat('es-MX', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    }).format(date);
+};
+
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN'
+    }).format(amount);
+};
+
+const generateHTMLTicket = (content) => {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Ticket</title>
+        <style>
+            body {
+                font-family: 'Courier New', Courier, monospace;
+                width: 80mm;
+                margin: 0;
+                padding: 5px;
+                font-size: 12px;
+                line-height: 1.2;
+                color: black;
+                background: white;
+            }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: bold; }
+            .text-lg { font-size: 16px; }
+            .text-xl { font-size: 20px; }
+            .text-sm { font-size: 10px; }
+            .my-2 { margin-top: 8px; margin-bottom: 8px; }
+            .mb-1 { margin-bottom: 4px; }
+            .border-b { border-bottom: 1px dashed black; padding-bottom: 5px; margin-bottom: 5px; }
+            .border-t { border-top: 1px dashed black; padding-top: 5px; margin-top: 5px; }
+            .flex { display: flex; justify-content: space-between; }
+            .logo { max-width: 60px; margin: 0 auto 10px auto; display: block; }
+            @media print {
+                @page { margin: 0; size: 80mm auto; }
+                body { width: 100%; }
+            }
+        </style>
+    </head>
+    <body>
+        ${content}
+        <script>
+            window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+            }
+        </script>
+    </body>
+    </html>
+    `;
+};
+
+const print = async (htmlContent) => {
+    if (PrintConfig.useRemoteServer && PrintConfig.serverUrl) {
+        try {
+            const response = await fetch(PrintConfig.serverUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ html: htmlContent })
+            });
+            if (!response.ok) throw new Error('Error printing remotely');
+            console.log('Ticket sent to remote server');
+            return;
+        } catch (error) {
+            console.error('Remote print failed, falling back to local:', error);
+            // Fallback to local print
+        }
+    }
+
+    // Local Browser Print
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (printWindow) {
+        printWindow.document.write(generateHTMLTicket(htmlContent));
+        printWindow.document.close();
+    } else {
+        alert('Por favor permite las ventanas emergentes para imprimir.');
+    }
+};
 
 export const TicketService = {
-    generateKitchenTicket: (table, items, orderNumber) => {
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [80, 200]
-        });
+    printKitchenTicket: (table, items, orderNumber) => {
+        const date = formatDate(new Date());
+        let folio = orderNumber || table.orderNumber || 'PEND';
 
-        let y = 10;
+        const content = `
+            <div class="text-center font-bold text-xl mb-1">LA TRUFA</div>
+            <div class="text-center font-bold text-lg border-b">COCINA</div>
+            
+            <div class="my-2">
+                <div class="font-bold text-xl text-center">FOLIO: #${folio}</div>
+                <div class="text-lg">Mesa: ${table.name}</div>
+                <div class="text-sm">${date}</div>
+            </div>
 
-        // Logic to ensure Folio exists
-        let currentFolio = orderNumber;
-        if (!currentFolio) {
-            // Fallback: Try to get from table object
-            currentFolio = table.orderNumber;
-        }
+            <div class="border-b font-bold flex">
+                <span>CANT</span> <span>PRODUCTO</span>
+            </div>
+            
+            ${items.map(item => `
+                <div class="mb-1">
+                    <div class="font-bold text-lg">${item.quantity} x ${item.name}</div>
+                    ${item.notes ? `<div class="text-sm italic ml-2">Nota: ${item.notes}</div>` : ''}
+                </div>
+            `).join('')}
+        `;
 
-        // If still no folio, generate one (Safety Net)
-        if (!currentFolio) {
-            let savedSeq = localStorage.getItem('la-trufa-order-sequence');
-            let nextSeq = savedSeq ? parseInt(savedSeq, 10) + 1 : 1000;
-            localStorage.setItem('la-trufa-order-sequence', nextSeq.toString());
-            currentFolio = nextSeq;
-        }
-
-        // Header
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('LA TRUFA', 40, y, { align: 'center' });
-        y += 8;
-
-        // FOLIO DISPLAY (GIANT)
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`FOLIO: #${currentFolio}`, 40, y, { align: 'center' });
-        y += 8;
-
-        doc.setFontSize(12);
-        doc.text('TICKET DE COCINA', 40, y, { align: 'center' });
-        y += 6;
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Mesa: ${table.name}`, 5, y);
-        y += 5;
-        doc.text(`Fecha: ${new Date().toLocaleString()}`, 5, y);
-        y += 8;
-
-        // Items
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CANT  PRODUCTO', 5, y);
-        y += 5;
-        doc.line(5, y, 75, y);
-        y += 5;
-
-        items.forEach(item => {
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${item.quantity}`, 5, y);
-
-            // Wrap text for long product names
-            const splitTitle = doc.splitTextToSize(item.name, 55);
-            doc.text(splitTitle, 20, y);
-
-            y += (splitTitle.length * 5);
-
-            if (item.notes) {
-                doc.setFont('helvetica', 'italic');
-                doc.setFontSize(10);
-                const splitNotes = doc.splitTextToSize(`Nota: ${item.notes}`, 65);
-                doc.text(splitNotes, 10, y);
-                y += (splitNotes.length * 4) + 2;
-                doc.setFontSize(12);
-            } else {
-                y += 2;
-            }
-        });
-
-        // Auto print
-        doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
+        print(content);
     },
 
-    generateCustomerTicket: (table, items, total, user, paymentMethod = 'Efectivo', discount = 0, tip = 0, isPreCheck = false) => {
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [80, 297] // A bit longer for customer ticket
-        });
-
-        let y = 10;
-
-        // Logic to ensure Folio exists
-        let currentFolio = table.orderNumber;
-        if (!currentFolio && !isPreCheck) { // Only generate folio if NOT pre-check
-            // Auto-generate Folio if missing (e.g. Takeout)
-            let savedSeq = localStorage.getItem('la-trufa-order-sequence');
-            let nextSeq = savedSeq ? parseInt(savedSeq, 10) + 1 : 1000;
-            localStorage.setItem('la-trufa-order-sequence', nextSeq.toString());
-            currentFolio = nextSeq;
-
-            // Note: We are generating it for the PRINT, but ideally it should be saved to the order object too.
-            // Since this is a service, we can't easily update the React state from here without a callback.
-            // However, for the purpose of the printed ticket, this ensures a number appears.
-        }
-
-        // Header
+    printCustomerTicket: (table, items, total, user, paymentMethod = 'Efectivo', discount = 0, tip = 0, isPreCheck = false) => {
+        const date = formatDate(new Date());
         const logo = localStorage.getItem('la-trufa-logo');
-        if (logo) {
-            try {
-                doc.addImage(logo, 'PNG', 25, y, 30, 30); // Centered approx
-                y += 32;
-            } catch (e) {
-                console.error("Error printing logo", e);
-                // Fallback text if logo fails
-                doc.setFontSize(16);
-                doc.setFont('helvetica', 'bold');
-                doc.text('LA TRUFA', 40, y, { align: 'center' });
-                y += 6;
-            }
-        } else {
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text('LA TRUFA', 40, y, { align: 'center' });
-            y += 6;
-        }
+        let folio = table.orderNumber || 'PEND';
 
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Matamoros #501, Zona Centro', 40, y, { align: 'center' });
-        y += 5;
-        doc.text('Tel: 313 126 6125', 40, y, { align: 'center' });
-        y += 8;
+        const content = `
+            ${logo ? `<img src="${logo}" class="logo" />` : ''}
+            <div class="text-center font-bold text-xl mb-1">LA TRUFA</div>
+            <div class="text-center text-sm">Matamoros #501, Zona Centro</div>
+            <div class="text-center text-sm border-b">Tel: 313 126 6125</div>
+            
+            <div class="text-center font-bold text-lg my-2">${isPreCheck ? 'PRE-CUENTA' : 'TICKET DE VENTA'}</div>
+            
+            <div class="mb-1">
+                ${(!isPreCheck || folio !== 'PEND') ? `<div class="text-center font-bold text-lg">FOLIO: #${folio}</div>` : ''}
+                <div class="flex"><span>Mesa: ${table.name}</span> <span>${user ? user.name : ''}</span></div>
+                <div class="text-sm">${date}</div>
+            </div>
 
-        // TITLE
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text(isPreCheck ? 'CUENTA' : 'TICKET DE VENTA', 40, y, { align: 'center' });
-        y += 8;
+            <div class="border-b border-t font-bold flex">
+                <span>CANT DESC</span> <span>IMPORTE</span>
+            </div>
 
-        // FOLIO DISPLAY (Only for final ticket or if already exists)
-        if (!isPreCheck || currentFolio) {
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`FOLIO: #${currentFolio || 'PENDIENTE'}`, 40, y, { align: 'center' });
-            y += 6;
-        }
+            ${items.map(item => `
+                <div class="flex mb-1">
+                    <div style="flex: 1">${item.quantity} ${item.name}</div>
+                    <div class="text-right">${formatCurrency(item.price * item.quantity)}</div>
+                </div>
+            `).join('')}
 
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Mesa: ${table.name}`, 5, y);
-        doc.text(`Atendió: ${user ? user.name : 'General'}`, 75, y, { align: 'right' });
-        y += 5;
-        doc.text(`Fecha: ${new Date().toLocaleString()}`, 5, y);
-        y += 8;
+            <div class="border-t my-2"></div>
 
-        // Items
-        doc.line(5, y, 75, y);
-        y += 5;
-        doc.setFont('helvetica', 'bold');
-        doc.text('CANT  DESCRIPCION', 5, y);
-        doc.text('IMPORTE', 75, y, { align: 'right' });
-        y += 5;
-        doc.line(5, y, 75, y);
-        y += 5;
+            ${discount > 0 ? `
+                <div class="flex text-sm">
+                    <span>Subtotal:</span> <span>${formatCurrency(total + discount)}</span>
+                </div>
+                <div class="flex text-sm font-bold">
+                    <span>Descuento:</span> <span>-${formatCurrency(discount)}</span>
+                </div>
+            ` : ''}
 
-        doc.setFont('helvetica', 'normal');
-        items.forEach(item => {
-            doc.text(`${item.quantity}`, 5, y);
+            <div class="flex font-bold text-lg">
+                <span>TOTAL:</span> <span>${formatCurrency(total)}</span>
+            </div>
 
-            const splitTitle = doc.splitTextToSize(item.name, 45);
-            doc.text(splitTitle, 15, y);
+            ${(tip > 0 && !isPreCheck) ? `
+                <div class="flex text-sm mt-1">
+                    <span>Propina:</span> <span>${formatCurrency(tip)}</span>
+                </div>
+                <div class="flex font-bold mt-1">
+                    <span>GRAN TOTAL:</span> <span>${formatCurrency(total + tip)}</span>
+                </div>
+            ` : ''}
 
-            const amount = (item.price * item.quantity).toFixed(2);
-            doc.text(`$${amount}`, 75, y, { align: 'right' });
+            ${!isPreCheck ? `
+                <div class="text-center mt-2 text-sm">Pago: ${paymentMethod}</div>
+            ` : ''}
 
-            y += (splitTitle.length * 5) + 2;
-        });
+            <div class="text-center mt-4 text-sm">
+                ¡Gracias por su preferencia!<br>
+                Este no es un comprobante fiscal
+            </div>
+        `;
 
-        y += 5;
-        doc.line(5, y, 75, y);
-        y += 8;
-
-        // Totals
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-
-        // Subtotal (if discount exists)
-        if (discount > 0) {
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Subtotal:', 40, y, { align: 'right' });
-            doc.text(`$${(total + discount).toFixed(2)}`, 75, y, { align: 'right' });
-            y += 5;
-            doc.setTextColor(200, 0, 0); // Red for discount
-            doc.text('Descuento:', 40, y, { align: 'right' });
-            doc.text(`-$${discount.toFixed(2)}`, 75, y, { align: 'right' });
-            doc.setTextColor(0, 0, 0); // Reset
-            y += 5;
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-        }
-
-        doc.text('TOTAL:', 40, y, { align: 'right' });
-        doc.text(`$${total.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 8;
-
-        if (tip > 0 && !isPreCheck) {
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Propina (Opcional):', 40, y, { align: 'right' });
-            doc.text(`$${tip.toFixed(2)}`, 75, y, { align: 'right' });
-            y += 5;
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('GRAN TOTAL:', 40, y, { align: 'right' });
-            doc.text(`$${(total + tip).toFixed(2)}`, 75, y, { align: 'right' });
-            y += 8;
-        }
-
-        if (!isPreCheck) {
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Pago: ${paymentMethod}`, 5, y);
-            y += 10;
-        } else {
-            y += 5;
-            // Clean ticket: No extra text
-            y += 5;
-        }
-
-        // Footer
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('¡Gracias por su preferencia!', 40, y, { align: 'center' });
-        y += 5;
-        doc.text('Este no es un comprobante fiscal', 40, y, { align: 'center' });
-
-        // Auto print
-        doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
+        print(content);
     },
 
-    generateCancellationTicket: (table, user) => {
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [80, 150]
-        });
+    printCancellationTicket: (table, user) => {
+        const date = formatDate(new Date());
 
-        let y = 10;
+        const content = `
+            <div class="text-center font-bold text-xl mb-1">LA TRUFA</div>
+            <div class="text-center font-bold text-lg border-b">CANCELACIÓN</div>
+            
+            <div class="my-2">
+                ${table.orderNumber ? `<div class="text-center font-bold text-lg">ORDEN #${table.orderNumber}</div>` : ''}
+                <div>Mesa: ${table.name}</div>
+                <div>Autorizó: ${user ? user.name : 'Admin'}</div>
+                <div class="text-sm">${date}</div>
+            </div>
 
-        // Header
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('LA TRUFA', 40, y, { align: 'center' });
-        y += 8;
+            <div class="text-center font-bold text-xl border-t border-b py-2">
+                ORDEN ANULADA
+            </div>
+            <div class="text-center text-sm mt-1">No preparar / Desechar</div>
+        `;
 
-        doc.setFontSize(14);
-        doc.text('CANCELACIÓN', 40, y, { align: 'center' });
-        y += 8;
-
-        if (table.orderNumber) {
-            doc.setFontSize(16);
-            doc.text(`ORDEN #${table.orderNumber}`, 40, y, { align: 'center' });
-            y += 8;
-        }
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Mesa: ${table.name}`, 5, y);
-        y += 5;
-        doc.text(`Autorizó: ${user ? user.name : 'Admin'}`, 5, y);
-        y += 5;
-        doc.text(`Fecha: ${new Date().toLocaleString()}`, 5, y);
-        y += 8;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('ORDEN ANULADA', 40, y, { align: 'center' });
-        y += 6;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text('No preparar / Desechar', 40, y, { align: 'center' });
-
-        // Auto print
-        doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
+        print(content);
     },
 
-    generateCashCutTicket: (cutData, user) => {
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [80, 200]
-        });
+    printCashCutTicket: (cutData, user) => {
+        const date = formatDate(new Date(cutData.date));
 
-        let y = 10;
+        const content = `
+            <div class="text-center font-bold text-xl mb-1">CORTE DE CAJA</div>
+            <div class="text-center text-sm border-b">${date}</div>
+            <div class="text-sm mb-2">Realizado por: ${user ? user.name : 'Sistema'}</div>
 
-        // Header
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('CORTE DE CAJA', 40, y, { align: 'center' });
-        y += 8;
+            <div class="font-bold border-b mb-1">RESUMEN FINANCIERO</div>
+            <div class="flex"><span>Efectivo:</span> <span>${formatCurrency(cutData.cashSales)}</span></div>
+            <div class="flex"><span>Digital:</span> <span>${formatCurrency(cutData.digitalSales)}</span></div>
+            <div class="flex font-bold"><span>Venta Total:</span> <span>${formatCurrency(cutData.systemSales)}</span></div>
+            <div class="flex text-sm"><span>(-) Gastos:</span> <span>${formatCurrency(cutData.expenses)}</span></div>
 
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Fecha: ${new Date(cutData.date).toLocaleString()}`, 5, y);
-        y += 5;
-        doc.text(`Realizado por: ${user ? user.name : 'Sistema'}`, 5, y);
-        y += 8;
+            <div class="font-bold border-b border-t my-2 mb-1">ARQUEO DE CAJA</div>
+            <div class="flex"><span>Esperado:</span> <span>${formatCurrency(cutData.expected)}</span></div>
+            <div class="flex"><span>Contado:</span> <span>${formatCurrency(cutData.counted)}</span></div>
+            
+            <div class="flex font-bold mt-1">
+                <span>Diferencia:</span> 
+                <span>${formatCurrency(cutData.difference)}</span>
+            </div>
 
-        doc.line(5, y, 75, y);
-        y += 5;
+            <div class="flex mt-2"><span>Retiro:</span> <span>${formatCurrency(cutData.withdraw)}</span></div>
+            <div class="flex font-bold"><span>En Caja:</span> <span>${formatCurrency(cutData.leftInDrawer)}</span></div>
 
-        // Financials
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text('RESUMEN FINANCIERO', 5, y);
-        y += 6;
+            <div class="mt-8 border-t w-3/4 mx-auto"></div>
+            <div class="text-center text-sm">Firma de Conformidad</div>
+        `;
 
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-
-        // Sales Breakdown
-        doc.text('Ventas Efectivo:', 5, y);
-        doc.text(`$${cutData.cashSales.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 5;
-
-        doc.text('Ventas Digitales:', 5, y);
-        doc.text(`$${cutData.digitalSales.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 5;
-
-        doc.setFont('helvetica', 'bold');
-        doc.text('Venta Total:', 5, y);
-        doc.text(`$${cutData.systemSales.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 8;
-        doc.setFont('helvetica', 'normal');
-
-        doc.text('(-) Gastos:', 5, y);
-        doc.text(`$${cutData.expenses.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 8;
-
-        doc.line(5, y, 75, y);
-        y += 5;
-
-        // Cash Reconciliation
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text('ARQUEO DE CAJA', 5, y);
-        y += 6;
-
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-
-        doc.text('Esperado en Caja:', 5, y);
-        doc.text(`$${cutData.expected.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 8;
-
-        doc.text('(+) Efectivo Contado:', 5, y);
-        doc.text(`$${cutData.counted.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 8;
-
-        doc.line(5, y, 75, y);
-        y += 5;
-
-        const diff = cutData.difference;
-        doc.setFont('helvetica', 'bold');
-        doc.text('Diferencia:', 5, y);
-        doc.setTextColor(diff < 0 ? 255 : 0, diff < 0 ? 0 : 128, 0); // Red if negative, Green if positive/zero
-        doc.text(`$${diff.toFixed(2)}`, 75, y, { align: 'right' });
-        doc.setTextColor(0, 0, 0); // Reset color
-        y += 8;
-
-        doc.text('Retiro (A Casa):', 5, y);
-        doc.text(`$${cutData.withdraw.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 5;
-
-        doc.text('Dejar en Caja:', 5, y);
-        doc.text(`$${cutData.leftInDrawer.toFixed(2)}`, 75, y, { align: 'right' });
-        y += 10;
-
-        // Footer
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'italic');
-        doc.text('Firma de Conformidad', 40, y, { align: 'center' });
-        y += 15;
-        doc.line(20, y, 60, y);
-
-        // Auto print
-        doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
+        print(content);
     }
 };

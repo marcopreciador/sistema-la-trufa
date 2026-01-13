@@ -252,28 +252,38 @@ function POSApp() {
   const handleSendToKitchen = () => {
     if (!activeOrder || activeOrder.items.length === 0) return;
 
+    // Generate Order Number if not exists
     let orderNumber = activeOrder.orderNumber;
     if (!orderNumber) {
       orderNumber = getNextOrderNumber();
     }
 
-    TicketService.generateKitchenTicket(activeOrder, activeOrder.items, orderNumber);
+    const newItems = activeOrder.items;
 
-    const newCommittedItems = [...(activeOrder.committedItems || []), ...activeOrder.items];
+    // Print to Kitchen (Thermal)
+    TicketService.printKitchenTicket(activeOrder, newItems, orderNumber);
 
-    updateOrder(activeOrder.id, {
+    // Update Table State
+    const updatedOrder = {
+      ...activeOrder,
       status: 'occupied',
-      startTime: activeOrder.startTime || new Date().toISOString(),
-      items: [],
-      committedItems: newCommittedItems,
-      orderNumber: orderNumber
-    });
+      orderNumber: orderNumber,
+      items: [], // Clear new items
+      committedItems: [...(activeOrder.committedItems || []), ...newItems], // Move to committed
+      startTime: activeOrder.startTime || new Date().toISOString()
+    };
 
     if (typeof activeOrder.id === 'number') {
-      removeDraft(activeOrder.id);
+      setTables(prev => prev.map(t => t.id === activeOrder.id ? updatedOrder : t));
+    } else {
+      setDeliveryOrders(prev => prev.map(o => o.id === activeOrder.id ? updatedOrder : o));
     }
 
-    setActiveOrderId(null);
+    // Clear Draft
+    removeDraft(activeOrder.id);
+
+    setShowSuccessModal(true);
+    setLastCompletedOrder({ type: 'kitchen', table: activeOrder.name });
   };
 
   const handleVoidOrder = () => {
@@ -305,11 +315,69 @@ function POSApp() {
     }
   };
 
-  const openPaymentModal = () => {
+  const handlePay = () => {
     if (!activeOrder) return;
     setIsPaymentModalOpen(true);
     setSelectedPaymentMethod('Efectivo');
     setTipAmount(0);
+  };
+
+  const confirmPayment = () => {
+    if (!activeOrder) return;
+
+    const discount = activeOrder.discount || 0;
+    const subtotal = currentTotal + committedTotal;
+    const grandTotal = subtotal - discount;
+
+    const allItems = [...(activeOrder.committedItems || []), ...activeOrder.items];
+
+    let finalOrderNumber = activeOrder.orderNumber;
+    if (!finalOrderNumber) {
+      finalOrderNumber = getNextOrderNumber();
+    }
+    const orderForTicket = { ...activeOrder, orderNumber: finalOrderNumber };
+
+    try {
+      TicketService.printCustomerTicket(orderForTicket, allItems, grandTotal, currentUser, selectedPaymentMethod, discount, parseFloat(tipAmount || 0));
+    } catch (error) {
+      console.error("Error generating ticket:", error);
+      alert("Error al imprimir ticket. La venta se guardará.");
+    }
+
+    let originName = '';
+    if (activeOrder.type === 'delivery') {
+      originName = 'Pedido ' + (activeOrder.customer?.name || 'Mostrador');
+    } else {
+      originName = activeOrder.name || `Mesa ${activeOrder.id}`;
+    }
+
+    const completedOrderData = {
+      ...activeOrder,
+      items: allItems,
+      total: grandTotal,
+      orderNumber: finalOrderNumber,
+      customer: activeOrder.customer || null
+    };
+
+    addSale({
+      items: allItems,
+      subtotal: subtotal,
+      discount: discount,
+      total: grandTotal,
+      tip: parseFloat(tipAmount || 0),
+      customer: activeOrder.customer || null,
+      userName: currentUser.name,
+      paymentMethod: selectedPaymentMethod,
+      orderNumber: finalOrderNumber,
+      sequence: finalOrderNumber,
+      tableName: originName,
+      status: 'completed'
+    });
+
+    // Defer cleanup: Show Success Modal
+    setLastCompletedOrder(completedOrderData);
+    setShowSuccessModal(true);
+    setIsPaymentModalOpen(false);
   };
 
   const handleFinishSale = () => {
