@@ -70,8 +70,8 @@ export function LoginScreen() {
     }, [selectedUser, pin]); // Re-bind when pin changes to capture current state if needed, though functional updates are safer.
 
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 md:p-8 animate-fade-in">
-            <div className="w-full max-w-4xl flex flex-col items-center">
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-0 md:p-8 animate-fade-in">
+            <div className="w-full max-w-4xl flex flex-col items-center px-4 py-8">
 
                 {/* Header */}
                 <div className="text-center mb-10">
@@ -81,18 +81,20 @@ export function LoginScreen() {
 
                 {!selectedUser ? (
                     /* User Selection */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 w-full">
+                    <div className="flex flex-col gap-4 w-full max-w-md">
                         {users.map(user => (
                             <button
                                 key={user.id}
                                 onClick={() => handleUserSelect(user)}
-                                className="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-2xl p-6 flex flex-col items-center transition-all transform hover:scale-105 group"
+                                className="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-2xl p-4 flex items-center space-x-6 transition-all transform active:scale-95 group w-full h-24"
                             >
-                                <div className="w-20 h-20 rounded-full bg-gray-700 group-hover:bg-blue-600 flex items-center justify-center text-2xl font-bold text-white mb-4 transition-colors">
+                                <div className="w-16 h-16 rounded-full bg-gray-700 group-hover:bg-blue-600 flex items-center justify-center text-xl font-bold text-white transition-colors shrink-0">
                                     {user.name.charAt(0)}
                                 </div>
-                                <h3 className="text-xl font-bold text-white">{user.name}</h3>
-                                <p className="text-sm text-gray-400">{user.role}</p>
+                                <div className="text-left">
+                                    <h3 className="text-xl font-bold text-white">{user.name}</h3>
+                                    <p className="text-sm text-gray-400">{user.role}</p>
+                                </div>
                             </button>
                         ))}
                     </div>
