@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ProductProvider, useProducts } from './context/ProductContext';
 import { UserProvider, useUsers } from './context/UserContext';
 import { SalesProvider, useSales } from './context/SalesContext';
-import { SalesProvider, useSales } from './context/SalesContext';
 import { ProductCardItem } from './components/ProductCardItem';
 import { Cart } from './components/Cart';
 import { ProductModal } from './components/ProductModal';
