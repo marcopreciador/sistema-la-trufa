@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function ProductCard({ product, onAdd }) {
+export function ProductCardItem({ product, onAdd }) {
     return (
         <div
             onClick={() => onAdd(product)}

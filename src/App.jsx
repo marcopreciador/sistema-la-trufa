@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProductProvider, useProducts } from './context/ProductContext';
 import { UserProvider, useUsers } from './context/UserContext';
-import { ProductCard } from './components/ProductCard';
+import { ProductCardItem } from './components/ProductCardItem';
 import { Cart } from './components/Cart';
 import { ProductModal } from './components/ProductModal';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -727,7 +727,7 @@ function POSApp() {
         <div className="flex-1 overflow-y-auto p-8 pt-0">
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
             {filteredProducts.map(product => (
-              <ProductCard
+              <ProductCardItem
                 key={product.id}
                 product={product}
                 onAdd={(p) => {
