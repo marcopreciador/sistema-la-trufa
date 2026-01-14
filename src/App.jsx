@@ -329,7 +329,15 @@ function POSApp() {
     // Silent Connection Check
     const isOnline = await checkConnection();
     if (!isOnline) {
-      alert("CRITICAL ERROR: No connection to Supabase. Check API Keys in src/services/supabase.js");
+      alert(
+        "⚠️ ERROR CRÍTICO DE CONEXIÓN ⚠️\n\n" +
+        "No se detectaron credenciales válidas de Supabase.\n\n" +
+        "ACCIÓN REQUERIDA:\n" +
+        "1. Abra el archivo: src/services/supabase.js\n" +
+        "2. Pegue su URL en: const HARDCODED_URL\n" +
+        "3. Pegue su Key en: const HARDCODED_KEY\n" +
+        "4. Guarde el archivo y recargue."
+      );
       return;
     }
 
