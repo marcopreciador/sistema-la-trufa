@@ -325,6 +325,35 @@ function POSApp() {
     setActiveOrderId(order.id);
   };
 
+  const handleNewOrder = async (tableId = null) => {
+    // Silent Connection Check
+    const isOnline = await checkConnection();
+    if (!isOnline) {
+      alert("CRITICAL ERROR: No connection to Supabase. Check API Keys in src/services/supabase.js");
+      return;
+    }
+
+    if (tableId) {
+      // ... existing logic for table
+      setActiveOrderId(tableId);
+      // ...
+    } else {
+      // Logic for delivery/takeout
+      const newOrder = {
+        id: Date.now(),
+        name: `Pedido ${new Date().toLocaleTimeString().slice(0, 5)}`,
+        status: 'ordering',
+        items: [],
+        committedItems: [],
+        startTime: new Date().toISOString(),
+        type: 'delivery'
+      };
+      setActiveOrderId(newOrder.id);
+      setDeliveryOrders(prev => [...prev, newOrder]);
+    }
+    setIsCartOpen(true);
+  };
+
   const handleCreateDeliveryOrder = (customer, address) => {
     const newOrder = {
       id: `del-${Date.now()}`,
@@ -1460,6 +1489,19 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 function App() {
   const [isReady, setIsReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false); // Connection State
+
+  // Silent Connection Test
+  const checkConnection = async () => {
+    if (!supabase) return false;
+    try {
+      const { count, error } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error("Connection Check Failed:", err);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const init = () => {
