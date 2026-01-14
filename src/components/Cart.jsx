@@ -133,7 +133,7 @@ export function Cart({ items, activeOrder, total, committedTotal = 0, discount =
                     {/* Kitchen vs Cashier Workflow */}
                     {activeOrder.type === 'delivery' ? (
                         <button
-                            onClick={onConfirmDelivery}
+                            onClick={onPay} // Direct to Payment
                             disabled={items.length === 0 && committedTotal === 0}
                             className={`col-span-2 py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
                                 ${items.length === 0 && committedTotal === 0
@@ -141,7 +141,7 @@ export function Cart({ items, activeOrder, total, committedTotal = 0, discount =
                                     : 'bg-green-600 hover:bg-green-700 active:scale-95 hover:shadow-green-600/30'
                                 }`}
                         >
-                            Confirmar Pedido
+                            Pagar y Mandar a Cocina
                         </button>
                     ) : (
                         <>

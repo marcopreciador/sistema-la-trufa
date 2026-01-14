@@ -384,6 +384,15 @@ function POSApp() {
     const orderForTicket = { ...activeOrder, orderNumber: finalOrderNumber };
 
     try {
+      // Optimized To-Go Flow: Print Kitchen Ticket automatically if it's a delivery order
+      if (activeOrder.type === 'delivery') {
+        // We need to print the kitchen ticket for the NEW items
+        // Note: activeOrder.items are the new items not yet committed
+        if (activeOrder.items.length > 0) {
+          TicketService.printKitchenTicket(activeOrder, activeOrder.items, finalOrderNumber);
+        }
+      }
+
       TicketService.printCustomerTicket(orderForTicket, allItems, grandTotal, currentUser, selectedPaymentMethod, discount, parseFloat(tipAmount || 0));
     } catch (error) {
       console.error("Error generating ticket:", error);
