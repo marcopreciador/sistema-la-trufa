@@ -139,7 +139,12 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
             onClose();
         } catch (error) {
             console.error("Error saving customer:", error);
-            alert("Error al guardar cliente en la nube. Intente de nuevo.");
+            // Enhanced Error Feedback
+            const errorMessage = error.message || "Error desconocido";
+            const errorDetails = error.details || "";
+            const errorHint = error.hint || "";
+
+            alert(`Error al guardar en la nube:\n\nMensaje: ${errorMessage}\nDetalles: ${errorDetails}\nSugerencia: ${errorHint}\n\nVerifique conexión y permisos.`);
         }
     };
 
