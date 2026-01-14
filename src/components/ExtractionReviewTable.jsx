@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem }) {
+export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem, inventory }) {
     return (
         <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
             <table className="min-w-full divide-y divide-gray-200">
@@ -15,8 +15,11 @@ export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem }) {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {items.map((item, index) => {
-                        // Logic to detect price increase would go here if we had historical data passed in
-                        // For now, we'll just render the table
+                        const existingItem = inventory?.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+                        const lastCost = existingItem ? existingItem.lastCost : 0;
+                        const isPriceIncreased = lastCost > 0 && item.unitPrice > lastCost;
+                        const priceDiff = item.unitPrice - lastCost;
+
                         return (
                             <tr key={index} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -42,8 +45,19 @@ export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem }) {
                                             type="number"
                                             value={item.unitPrice}
                                             onChange={(e) => onUpdateItem(index, 'unitPrice', parseFloat(e.target.value))}
-                                            className="w-24 pl-6 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500"
+                                            className={`w-24 pl-6 border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 ${isPriceIncreased
+                                                    ? 'bg-red-50 border-red-300 text-red-700'
+                                                    : 'bg-gray-50 border-gray-200 text-gray-900'
+                                                }`}
                                         />
+                                        {isPriceIncreased && (
+                                            <div className="absolute -top-3 -right-2 bg-red-100 text-red-600 text-xs px-1.5 py-0.5 rounded-full border border-red-200 flex items-center shadow-sm">
+                                                <svg className="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                                </svg>
+                                                +${priceDiff.toFixed(2)}
+                                            </div>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
