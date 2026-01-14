@@ -104,6 +104,14 @@ function POSApp() {
       const matchesCategory = selectedCategory === 'Todos' || product.category === selectedCategory;
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
+    }).sort((a, b) => {
+      // Smart Search: Prioritize startsWith
+      const query = searchQuery.toLowerCase();
+      const aStarts = a.name.toLowerCase().startsWith(query);
+      const bStarts = b.name.toLowerCase().startsWith(query);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return 0;
     });
   }, [products, selectedCategory, searchQuery]);
 
@@ -233,6 +241,9 @@ function POSApp() {
       const newItems = [...activeOrder.items, { ...product, quantity, notes }];
       updateOrder(activeOrder.id, { items: newItems });
     }
+
+    // Speed UX: Auto-clear search
+    setSearchQuery('');
 
     if (activeOrder.status === 'free' && typeof activeOrder.id === 'number') {
       updateOrder(activeOrder.id, { status: 'ordering' });
@@ -825,8 +836,8 @@ function POSApp() {
 
           <CategoryFilter
             categories={categories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
+            activeCategory={selectedCategory}
+            onSelect={setSelectedCategory}
           />
         </header>
 
@@ -956,10 +967,16 @@ function POSApp() {
               </button>
 
               <button
-                onClick={handleFinishSale}
-                className="w-full py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                onClick={lastCompletedOrder.type === 'kitchen'
+                  ? () => setShowSuccessModal(false)
+                  : handleFinishSale
+                }
+                className={`w-full py-4 font-bold rounded-xl transition-colors ${lastCompletedOrder.type === 'kitchen'
+                    ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
-                Cerrar / Finalizar
+                {lastCompletedOrder.type === 'kitchen' ? 'Continuar Agregando' : 'Cerrar / Finalizar'}
               </button>
             </div>
           </div>
