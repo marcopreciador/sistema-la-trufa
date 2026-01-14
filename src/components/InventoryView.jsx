@@ -13,7 +13,7 @@ export function InventoryView({ onBack }) {
     const handleFileSelect = async (file) => {
         setIsProcessing(true);
         try {
-            const result = await processInvoiceImage(file);
+            const result = await processInvoiceImage(file, inventory);
             setExtractedData(result);
         } catch (error) {
             console.error("Error processing invoice:", error);
@@ -85,8 +85,8 @@ export function InventoryView({ onBack }) {
                     <button
                         onClick={() => setActiveTab('upload')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'upload'
-                                ? 'bg-blue-50 text-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-900'
+                            ? 'bg-blue-50 text-blue-600 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-900'
                             }`}
                     >
                         Cargar Factura
@@ -94,8 +94,8 @@ export function InventoryView({ onBack }) {
                     <button
                         onClick={() => setActiveTab('history')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'history'
-                                ? 'bg-blue-50 text-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-900'
+                            ? 'bg-blue-50 text-blue-600 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-900'
                             }`}
                     >
                         Historial de Compras
@@ -103,8 +103,8 @@ export function InventoryView({ onBack }) {
                     <button
                         onClick={() => setActiveTab('stock')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'stock'
-                                ? 'bg-blue-50 text-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-900'
+                            ? 'bg-blue-50 text-blue-600 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-900'
                             }`}
                     >
                         Stock Actual
@@ -242,8 +242,8 @@ export function InventoryView({ onBack }) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${item.stock <= 5 ? 'bg-red-100 text-red-800' :
-                                                            item.stock <= 10 ? 'bg-yellow-100 text-yellow-800' :
-                                                                'bg-green-100 text-green-800'
+                                                        item.stock <= 10 ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-green-100 text-green-800'
                                                         }`}>
                                                         {parseFloat(item.stock).toFixed(2)}
                                                     </span>

@@ -6,7 +6,9 @@ export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem, inven
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SAT / Unidad</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Unitario</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
@@ -23,12 +25,56 @@ export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem, inven
                         return (
                             <tr key={index} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <input
-                                        type="text"
-                                        value={item.name}
-                                        onChange={(e) => onUpdateItem(index, 'name', e.target.value)}
-                                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-900"
-                                    />
+                                    {item.matchType === 'CODE_MATCH' && (
+                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full flex items-center w-fit">
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                            Código
+                                        </span>
+                                    )}
+                                    {item.matchType === 'NAME_MATCH' && (
+                                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full flex items-center w-fit">
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            Nombre
+                                        </span>
+                                    )}
+                                    {item.matchType === 'NEW' && (
+                                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full flex items-center w-fit">
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                            Nuevo
+                                        </span>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col">
+                                        <input
+                                            type="text"
+                                            value={item.name}
+                                            onChange={(e) => onUpdateItem(index, 'name', e.target.value)}
+                                            className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold text-gray-900 p-0"
+                                        />
+                                        {item.matchType !== 'NEW' && item.originalName !== item.name && (
+                                            <span className="text-xs text-gray-400">PDF: {item.originalName}</span>
+                                        )}
+                                        {item.code && <span className="text-xs text-gray-500">Código: {item.code}</span>}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="flex flex-col space-y-1">
+                                        <input
+                                            type="text"
+                                            placeholder="SAT Code"
+                                            value={item.satCode || ''}
+                                            onChange={(e) => onUpdateItem(index, 'satCode', e.target.value)}
+                                            className="w-24 bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-600"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Unidad"
+                                            value={item.unit || ''}
+                                            onChange={(e) => onUpdateItem(index, 'unit', e.target.value)}
+                                            className="w-24 bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-600"
+                                        />
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <input
@@ -46,8 +92,8 @@ export function ExtractionReviewTable({ items, onUpdateItem, onRemoveItem, inven
                                             value={item.unitPrice}
                                             onChange={(e) => onUpdateItem(index, 'unitPrice', parseFloat(e.target.value))}
                                             className={`w-24 pl-6 border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 ${isPriceIncreased
-                                                    ? 'bg-red-50 border-red-300 text-red-700'
-                                                    : 'bg-gray-50 border-gray-200 text-gray-900'
+                                                ? 'bg-red-50 border-red-300 text-red-700'
+                                                : 'bg-gray-50 border-gray-200 text-gray-900'
                                                 }`}
                                         />
                                         {isPriceIncreased && (
