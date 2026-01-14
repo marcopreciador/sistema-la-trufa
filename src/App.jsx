@@ -193,8 +193,7 @@ function POSApp() {
           }
         })
         .subscribe((status) => {
-          if (status === 'SUBSCRIBED') setIsConnected(true);
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setIsConnected(false);
+          console.log("Print Channel Status:", status);
         });
     } else {
       // On mobile, we still want to show connected status based on other channels
