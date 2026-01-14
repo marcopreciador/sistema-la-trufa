@@ -15,14 +15,9 @@ if (SUPABASE_URL.includes("your-project") || SUPABASE_ANON_KEY.includes("your-an
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
-    },
-    db: {
-        schema: 'public'
+        persistSession: false
     },
     global: {
-        headers: { 'x-my-custom-header': 'la-trufa-pos' } // Optional: helps with debugging logs
+        headers: { 'x-my-custom-header': 'la-trufa' }
     }
 });
