@@ -101,6 +101,17 @@ function POSApp() {
     }
   }, [activeOrderId, tables, deliveryOrders]);
 
+  // Safety Timeout: Prevent "Loading..." stuck state
+  useEffect(() => {
+    if (activeOrderId && !activeOrder) {
+      const timer = setTimeout(() => {
+        console.warn("Safety Timeout: Resetting stuck order state");
+        setActiveOrderId(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeOrderId, activeOrder]);
+
   const categories = useMemo(() => {
     const cats = ['Todos', ...new Set(products.map(p => p.category))];
     const preferredOrder = ['Todos', 'Desayunos', 'Entradas', 'Asada y Arrachera', 'Antojitos Mexicanos', 'Guisados', 'Otros', 'Bebidas'];
@@ -570,6 +581,8 @@ function POSApp() {
       } : t));
     } else {
       setDeliveryOrders(prev => prev.filter(o => o.id !== activeOrderId));
+      // Immediate reset for delivery to prevent stuck state
+      setActiveOrderId(null);
     }
 
     // Defer cleanup: Show Success Modal
