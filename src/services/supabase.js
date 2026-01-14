@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 // ------------------------------------------------------------------
 // CREDENCIALES REALES (PEGAR AQUÍ)
 // ------------------------------------------------------------------
-const SUPABASE_URL = "https://your-project.supabase.co"; // <--- PEGAR URL AQUÍ
-const SUPABASE_ANON_KEY = "your-anon-key";             // <--- PEGAR KEY AQUÍ
+const SUPABASE_URL = "https://fpgpuzvlyvovxuevlvon.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwZ3B1enZseXZvdnh1ZXZsdm9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY4OTIwMTgsImV4cCI6MjA1MjQ2ODAxOH0.S5cC16IkpXVCJ9.eyJpc3M3Mio0ZjZhMHYzZSBhYmYmZzZSiInJlZiI6Imptcm1tcGZzSIsInJlZiI6Imptcm1tcGZzIn0";
 // ------------------------------------------------------------------
 
 if (SUPABASE_URL.includes("your-project") || SUPABASE_ANON_KEY.includes("your-anon-key")) {
