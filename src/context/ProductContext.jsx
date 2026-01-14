@@ -29,12 +29,25 @@ export function ProductProvider({ children }) {
         const fetchCustomers = async () => {
             const { data, error } = await supabase.from('clients').select('*');
             if (!error && data) {
-                // Merge with local? Or overwrite? 
-                // For now, let's trust Supabase as source of truth if available, but keep local for offline.
-                // We'll merge by ID to avoid duplicates if possible, or just replace.
-                // Simpler: Replace local with Supabase data if successful.
-                setCustomers(data);
-                localStorage.setItem('la-trufa-customers', JSON.stringify(data));
+                let finalCustomers = data;
+
+                // Seed "Marco" for testing/demo if not exists
+                const marcoExists = data.find(c => c.phone === '3123015011');
+                if (!marcoExists) {
+                    const marco = {
+                        id: Date.now(),
+                        name: 'Marco',
+                        phone: '3123015011',
+                        addresses: ['Mariano Matamoros #501']
+                    };
+                    const { error: insertError } = await supabase.from('clients').insert([marco]);
+                    if (!insertError) {
+                        finalCustomers = [...data, marco];
+                    }
+                }
+
+                setCustomers(finalCustomers);
+                localStorage.setItem('la-trufa-customers', JSON.stringify(finalCustomers));
             }
         };
         fetchCustomers();
@@ -56,7 +69,31 @@ export function ProductProvider({ children }) {
         };
     }, []);
 
-    // ... (Other states)
+    // Products Persistence
+    useEffect(() => {
+        localStorage.setItem('la-trufa-products', JSON.stringify(products));
+    }, [products]);
+
+    // Product Actions
+    const addProduct = (product) => {
+        const newProduct = {
+            id: Date.now(),
+            ...product
+        };
+        setProducts([...products, newProduct]);
+    };
+
+    const updateProduct = (updatedProduct) => {
+        setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    };
+
+    const deleteProduct = (id) => {
+        setProducts(products.filter(p => p.id !== id));
+    };
+
+    const resetToDefault = () => {
+        setProducts(defaultProducts);
+    };
 
     // Customer Actions
     const addCustomer = async (customer) => {
