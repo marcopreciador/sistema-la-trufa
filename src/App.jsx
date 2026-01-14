@@ -1345,7 +1345,9 @@ function POSApp() {
           onEditItem: handleEditCartItem,
           onVoid: currentUser.role === 'Admin' ? handleVoidOrder : undefined,
           onApplyDiscount: handleApplyDiscount,
-          onPrintPreCheck: handlePrintPreCheck
+          onPrintPreCheck: handlePrintPreCheck,
+          onConfirmDelivery: handleConfirmDelivery,
+          isProcessing: isProcessing
         }}
       />
       <ProductInfoModal

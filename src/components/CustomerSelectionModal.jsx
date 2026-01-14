@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useProducts } from '../context/ProductContext';
+import { supabase } from '../services/supabase';
 
 export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
     const { customers, addCustomer, updateCustomer } = useProducts();
@@ -24,30 +25,62 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
 
     // Smart Search Logic
     useEffect(() => {
-        if (phoneSearch.length >= 3) {
-            const found = customers.find(c => c.phone.includes(phoneSearch));
-            if (found) {
-                setExistingCustomer(found);
-                setName(found.name);
-                setAddresses(found.addresses || []);
-                if (found.addresses && found.addresses.length > 0) {
-                    setSelectedAddress(found.addresses[0]);
+        const performSearch = async () => {
+            if (phoneSearch.length >= 3) {
+                // 1. Local Search
+                const found = customers.find(c => c.phone.includes(phoneSearch));
+                if (found) {
+                    setExistingCustomer(found);
+                    setName(found.name);
+                    setAddresses(found.addresses || []);
+                    if (found.addresses && found.addresses.length > 0) {
+                        setSelectedAddress(found.addresses[0]);
+                    }
+                    setIsNewCustomer(false);
+                } else {
+                    // 2. Global Search (Supabase)
+                    let remoteFound = null;
+                    if (phoneSearch.length >= 10 && supabase) {
+                        try {
+                            const { data, error } = await supabase
+                                .from('clients')
+                                .select('*')
+                                .eq('phone', phoneSearch)
+                                .single();
+
+                            if (data && !error) {
+                                remoteFound = data;
+                            }
+                        } catch (err) {
+                            console.error("Error searching client:", err);
+                        }
+                    }
+
+                    if (remoteFound) {
+                        setExistingCustomer(remoteFound);
+                        setName(remoteFound.name);
+                        setAddresses(remoteFound.addresses || []);
+                        if (remoteFound.addresses && remoteFound.addresses.length > 0) {
+                            setSelectedAddress(remoteFound.addresses[0]);
+                        }
+                        setIsNewCustomer(false);
+                    } else {
+                        setExistingCustomer(null);
+                        // Only set new customer mode if phone is long enough to be real
+                        if (phoneSearch.length >= 10) {
+                            setIsNewCustomer(true);
+                            setName('');
+                            setAddresses([]);
+                            setSelectedAddress('');
+                        }
+                    }
                 }
-                setIsNewCustomer(false);
             } else {
                 setExistingCustomer(null);
-                // Only set new customer mode if phone is long enough to be real
-                if (phoneSearch.length >= 10) {
-                    setIsNewCustomer(true);
-                    setName('');
-                    setAddresses([]);
-                    setSelectedAddress('');
-                }
+                setIsNewCustomer(false);
             }
-        } else {
-            setExistingCustomer(null);
-            setIsNewCustomer(false);
-        }
+        };
+        performSearch();
     }, [phoneSearch, customers]);
 
     const handleSaveAndSelect = (e) => {
