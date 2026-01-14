@@ -111,6 +111,28 @@ function POSApp() {
       })
       .subscribe();
 
+    // 2.1 Initial Fetch (Delivery Orders)
+    const fetchDeliveryOrders = async () => {
+      const { data, error } = await supabase.from('delivery_orders').select('*');
+      if (!error && data) {
+        const remoteOrders = data.map(o => ({
+          id: o.id,
+          name: o.name,
+          type: 'delivery',
+          customer: o.customer,
+          deliveryAddress: o.delivery_address,
+          status: o.status,
+          items: o.items || [],
+          committedItems: o.committed_items || [],
+          startTime: o.start_time,
+          discount: o.discount || 0,
+          orderNumber: o.order_number
+        }));
+        setDeliveryOrders(remoteOrders);
+      }
+    };
+    fetchDeliveryOrders();
+
     // 3. Real-time Subscription (Delivery Orders)
     const deliverySubscription = supabase
       .channel('delivery_channel')
