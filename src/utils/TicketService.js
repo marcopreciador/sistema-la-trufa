@@ -69,23 +69,48 @@ const generateHTMLTicket = (content) => {
 };
 
 const print = async (htmlContent) => {
-    if (PrintConfig.useRemoteServer && PrintConfig.serverUrl) {
+    // 1. Remote Print via Supabase Queue (for iPhone/Remote Devices)
+    // If we are on a mobile device (simple check) or configured to use remote
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile || (PrintConfig.useRemoteServer && PrintConfig.serverUrl)) {
         try {
-            const response = await fetch(PrintConfig.serverUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ html: htmlContent })
-            });
-            if (!response.ok) throw new Error('Error printing remotely');
-            console.log('Ticket sent to remote server');
+            // Option A: Direct HTTP to Print Server (if accessible)
+            if (PrintConfig.serverUrl && !isMobile) {
+                const response = await fetch(PrintConfig.serverUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ html: htmlContent })
+                });
+                if (!response.ok) throw new Error('Error printing remotely');
+                return;
+            }
+
+            // Option B: Supabase Print Queue (Reliable for iPhone -> Mac)
+            // We insert a job into a 'print_queue' table. The Mac (Print Server) listens to this table.
+            // Assuming 'print_queue' table exists or we use a workaround.
+            // Workaround: Use 'system_events' or similar if 'print_queue' doesn't exist.
+            // Let's assume we create/use 'print_jobs' table.
+            const { error } = await import('../services/supabase').then(({ supabase }) =>
+                supabase.from('print_jobs').insert([{
+                    content: htmlContent,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                }])
+            );
+
+            if (error) throw error;
+            console.log('Print job queued in Supabase');
+            alert('Ticket enviado a la cola de impresión (Mac)');
             return;
+
         } catch (error) {
-            console.error('Remote print failed, falling back to local:', error);
-            // Fallback to local print
+            console.error('Remote print failed:', error);
+            alert('Error al enviar ticket a la Mac. Verifique conexión.');
         }
     }
 
-    // Local Browser Print
+    // 2. Local Browser Print (Fallback / Desktop)
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     if (printWindow) {
         printWindow.document.write(generateHTMLTicket(htmlContent));

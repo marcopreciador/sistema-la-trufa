@@ -112,18 +112,12 @@ function POSApp() {
       .subscribe();
 
     // 3. Real-time Subscription (Delivery Orders)
-    // Assuming we use a 'delivery_orders' table or similar. 
-    // If not exists, I should create it or use a JSON column.
-    // Given I can't create tables in Supabase from here easily, I'll assume it exists or I'll use a workaround.
-    // Workaround: Use a 'orders' table for delivery.
-    // Let's assume 'delivery_orders' exists for now as per "Sincronización Real" request implies backend readiness or I need to make it work.
-    // I'll add the subscription logic.
     const deliverySubscription = supabase
       .channel('delivery_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_orders' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           setDeliveryOrders(prev => [...prev, {
-            id: payload.new.id, // Ensure ID matches (string vs number)
+            id: payload.new.id,
             name: payload.new.name,
             type: 'delivery',
             customer: payload.new.customer,
@@ -154,9 +148,46 @@ function POSApp() {
       })
       .subscribe();
 
+    // 4. Print Job Listener (Mac/Desktop Only)
+    // This allows the Mac to act as a Print Server for the iPhone
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let printSubscription = null;
+
+    if (!isMobile) {
+      console.log("Initializing Print Server Listener...");
+      printSubscription = supabase
+        .channel('print_jobs_channel')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'print_jobs' }, async (payload) => {
+          console.log("New Print Job Received:", payload.new.id);
+
+          // Process Print Job
+          const { content } = payload.new;
+
+          // Use local print (or send to local print server)
+          // We can reuse TicketService logic or direct print
+          // For simplicity, we'll try to open a print window or send to localhost:3001
+          try {
+            // Send to Local Print Server (Python/Node)
+            await fetch('http://localhost:3001/print', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ html: content })
+            });
+
+            // Update status to 'printed'
+            await supabase.from('print_jobs').update({ status: 'printed' }).eq('id', payload.new.id);
+          } catch (err) {
+            console.error("Failed to process print job:", err);
+            // Fallback: Open window? Might be blocked if not user-initiated.
+          }
+        })
+        .subscribe();
+    }
+
     return () => {
       tablesSubscription.unsubscribe();
       deliverySubscription.unsubscribe();
+      if (printSubscription) printSubscription.unsubscribe();
     };
   }, []);
 
