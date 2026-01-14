@@ -69,6 +69,45 @@ export function ProductProvider({ children }) {
         };
     }, []);
 
+    // Other States (Restored)
+    const [cashCuts, setCashCuts] = useState(() => {
+        const saved = localStorage.getItem('la-trufa-cash-cuts');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const [expenses, setExpenses] = useState(() => {
+        const saved = localStorage.getItem('la-trufa-expenses');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const [inventory, setInventory] = useState(() => {
+        const saved = localStorage.getItem('la-trufa-inventory');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const [purchases, setPurchases] = useState(() => {
+        const saved = localStorage.getItem('la-trufa-purchases');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    const [tableDrafts, setTableDrafts] = useState(() => {
+        const saved = localStorage.getItem('la-trufa-table-drafts');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    const [orderSequence, setOrderSequence] = useState(() => {
+        const saved = localStorage.getItem('la-trufa-order-sequence');
+        return saved ? parseInt(saved, 10) : 1;
+    });
+
+    // Persistence Effects for Restored States
+    useEffect(() => { localStorage.setItem('la-trufa-cash-cuts', JSON.stringify(cashCuts)); }, [cashCuts]);
+    useEffect(() => { localStorage.setItem('la-trufa-expenses', JSON.stringify(expenses)); }, [expenses]);
+    useEffect(() => { localStorage.setItem('la-trufa-inventory', JSON.stringify(inventory)); }, [inventory]);
+    useEffect(() => { localStorage.setItem('la-trufa-purchases', JSON.stringify(purchases)); }, [purchases]);
+    useEffect(() => { localStorage.setItem('la-trufa-table-drafts', JSON.stringify(tableDrafts)); }, [tableDrafts]);
+    useEffect(() => { localStorage.setItem('la-trufa-order-sequence', orderSequence.toString()); }, [orderSequence]);
+
     // Products Persistence
     useEffect(() => {
         localStorage.setItem('la-trufa-products', JSON.stringify(products));
