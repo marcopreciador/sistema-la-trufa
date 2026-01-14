@@ -5,43 +5,43 @@ export const processInvoiceImage = async (file, existingProducts = []) => {
     return new Promise((resolve) => {
         setTimeout(() => {
             // 1. Simulate Provider Detection
-            // In real world, we'd look for keywords like "INDAR", "COSTCO", etc.
-            const provider = "INDAR"; // Mocking INDAR for this test
+            const provider = "INDAR"; // Mocking INDAR
 
-            // 2. Mock Extracted Items from PDF/Image
+            // 2. Mock Extracted Items from PDF/Image (Realistic Data)
             const rawExtractedItems = [
                 {
-                    code: "ORN-123",
-                    description: "Tornimaster 1/2 pulgada",
+                    code: "K7 CSKY N-14",
+                    description: "CABLE ELECTRICO CAL 14 COLOR NEGRO",
                     qty: 100,
+                    price: 12.50,
+                    satCode: "26121600",
+                    unit: "MTR" // Metro
+                },
+                {
+                    code: "ORN-123", // Existing code example
+                    description: "Tornimaster 1/2 pulgada (PDF Desc)",
+                    qty: 50,
                     price: 2.50,
                     satCode: "31161500",
                     unit: "H87" // Pieza
                 },
                 {
-                    code: "TOM-BOLA", // Code that might not exist in our DB
-                    description: "Tomate Bola",
+                    code: "NEW-PROD-001",
+                    description: "Martillo Industrial 20oz",
                     qty: 5,
-                    price: 35.00,
-                    satCode: "50403800",
-                    unit: "KGM" // Kilogramo
-                },
-                {
-                    code: "UNK-999",
-                    description: "Producto Nuevo Desconocido",
-                    qty: 10,
-                    price: 50.00,
-                    satCode: "10101010",
+                    price: 150.00,
+                    satCode: "27111600",
                     unit: "H87"
                 }
             ];
 
-            // 3. Smart Mapping Logic
+            // 3. Strict Mapping Logic
             const processedItems = rawExtractedItems.map(item => {
                 let matchType = 'NEW';
                 let matchedProduct = null;
 
-                // Priority 1: Code Match
+                // Priority 1: Strict Code Match
+                // We use the extracted code to find an exact match in our DB
                 if (item.code) {
                     matchedProduct = existingProducts.find(p => p.code === item.code || (p.sku && p.sku === item.code));
                     if (matchedProduct) {
@@ -49,20 +49,12 @@ export const processInvoiceImage = async (file, existingProducts = []) => {
                     }
                 }
 
-                // Priority 2: Name Match (Fuzzy Logic Simulation)
-                if (!matchedProduct) {
-                    // Simple "includes" check for mock fuzzy logic
-                    matchedProduct = existingProducts.find(p =>
-                        p.name.toLowerCase().includes(item.description.toLowerCase()) ||
-                        item.description.toLowerCase().includes(p.name.toLowerCase())
-                    );
-                    if (matchedProduct) {
-                        matchType = 'NAME_MATCH';
-                    }
-                }
+                // Priority 2: NO Fuzzy Name Match (Strict Rule: Prohibido Inventar)
+                // If no code match, it is NEW. We do NOT guess based on name.
 
                 return {
-                    name: matchedProduct ? matchedProduct.name : item.description, // Use system name if matched
+                    // If matched, use System Name. If NEW, use EXACT PDF Description.
+                    name: matchedProduct ? matchedProduct.name : item.description,
                     originalName: item.description,
                     quantity: item.qty,
                     unitPrice: item.price,
@@ -70,7 +62,7 @@ export const processInvoiceImage = async (file, existingProducts = []) => {
                     code: item.code,
                     satCode: item.satCode,
                     unit: item.unit,
-                    matchType: matchType, // 'CODE_MATCH', 'NAME_MATCH', 'NEW'
+                    matchType: matchType, // 'CODE_MATCH' or 'NEW'
                     matchedProductId: matchedProduct ? matchedProduct.id : null
                 };
             });
