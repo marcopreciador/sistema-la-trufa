@@ -15,9 +15,14 @@ if (SUPABASE_URL.includes("your-project") || SUPABASE_ANON_KEY.includes("your-an
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
-        persistSession: false
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
     },
     global: {
-        headers: { 'x-my-custom-header': 'la-trufa' }
+        headers: {
+            'x-my-custom-header': 'la-trufa',
+            'Content-Type': 'application/json'
+        }
     }
 });
