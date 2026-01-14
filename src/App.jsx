@@ -734,15 +734,6 @@ function POSApp() {
           <div className="space-y-6">
             <div className="flex justify-end space-x-3">
               <button
-                onClick={() => setIsDirectoryOpen(true)}
-                className="bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-xl font-bold shadow-sm border border-gray-200 transition-all flex items-center space-x-2"
-              >
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                <span>Ver Clientes</span>
-              </button>
-              <button
                 onClick={() => setIsCustomerModalOpen(true)}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center space-x-2"
               >

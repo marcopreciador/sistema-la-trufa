@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { products as defaultProducts } from '../data/products';
+import { supabase } from '../services/supabase';
 
 const ProductContext = createContext();
 
@@ -20,124 +21,74 @@ export function ProductProvider({ children }) {
         return savedCustomers ? JSON.parse(savedCustomers) : [];
     });
 
-    // Cash Cuts State
-    const [cashCuts, setCashCuts] = useState(() => {
-        const savedCuts = localStorage.getItem('la-trufa-cash-cuts');
-        return savedCuts ? JSON.parse(savedCuts) : [];
-    });
-
-    // Expenses State
-    const [expenses, setExpenses] = useState(() => {
-        try {
-            const savedExpenses = localStorage.getItem('la-trufa-expenses');
-            const parsed = savedExpenses ? JSON.parse(savedExpenses) : [];
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            console.error('Error loading expenses:', error);
-            return [];
-        }
-    });
-
-    // Purchases History State
-    const [purchases, setPurchases] = useState(() => {
-        try {
-            const savedPurchases = localStorage.getItem('la-trufa-purchases');
-            const parsed = savedPurchases ? JSON.parse(savedPurchases) : [];
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (error) {
-            console.error('Error loading purchases:', error);
-            return [];
-        }
-    });
-
-    // Inventory State
-    const [inventory, setInventory] = useState(() => {
-        const savedInventory = localStorage.getItem('la-trufa-inventory');
-        return savedInventory ? JSON.parse(savedInventory) : [];
-    });
-
-    // Table Drafts State
-    const [tableDrafts, setTableDrafts] = useState(() => {
-        const savedDrafts = localStorage.getItem('la-trufa-table-drafts');
-        return savedDrafts ? JSON.parse(savedDrafts) : {};
-    });
-
-    // Order Sequence State
-    const [orderSequence, setOrderSequence] = useState(() => {
-        const savedSeq = localStorage.getItem('la-trufa-order-sequence');
-        return savedSeq ? parseInt(savedSeq, 10) : 1000;
-    });
-
-    // Persistence
+    // Supabase Sync for Customers
     useEffect(() => {
-        localStorage.setItem('la-trufa-products', JSON.stringify(products));
-    }, [products]);
+        if (!supabase) return;
 
-    // salesHistory effect removed
+        // 1. Initial Fetch
+        const fetchCustomers = async () => {
+            const { data, error } = await supabase.from('clients').select('*');
+            if (!error && data) {
+                // Merge with local? Or overwrite? 
+                // For now, let's trust Supabase as source of truth if available, but keep local for offline.
+                // We'll merge by ID to avoid duplicates if possible, or just replace.
+                // Simpler: Replace local with Supabase data if successful.
+                setCustomers(data);
+                localStorage.setItem('la-trufa-customers', JSON.stringify(data));
+            }
+        };
+        fetchCustomers();
 
-    useEffect(() => {
-        localStorage.setItem('la-trufa-customers', JSON.stringify(customers));
-    }, [customers]);
+        // 2. Real-time Subscription
+        const subscription = supabase
+            .channel('clients_channel')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setCustomers(prev => [...prev, payload.new]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setCustomers(prev => prev.map(c => c.id === payload.new.id ? payload.new : c));
+                }
+            })
+            .subscribe();
 
-    useEffect(() => {
-        localStorage.setItem('la-trufa-cash-cuts', JSON.stringify(cashCuts));
-    }, [cashCuts]);
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, []);
 
-    useEffect(() => {
-        localStorage.setItem('la-trufa-expenses', JSON.stringify(expenses));
-    }, [expenses]);
-
-    useEffect(() => {
-        localStorage.setItem('la-trufa-purchases', JSON.stringify(purchases));
-    }, [purchases]);
-
-    useEffect(() => {
-        localStorage.setItem('la-trufa-inventory', JSON.stringify(inventory));
-    }, [inventory]);
-
-    useEffect(() => {
-        localStorage.setItem('la-trufa-table-drafts', JSON.stringify(tableDrafts));
-    }, [tableDrafts]);
-
-    useEffect(() => {
-        localStorage.setItem('la-trufa-order-sequence', orderSequence.toString());
-    }, [orderSequence]);
-
-    // Product Actions
-    const addProduct = (product) => {
-        const newProduct = { ...product, id: Date.now() };
-        setProducts([...products, newProduct]);
-    };
-
-    const updateProduct = (updatedProduct) => {
-        setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    };
-
-    const deleteProduct = (id) => {
-        setProducts(products.filter(p => p.id !== id));
-    };
-
-    const resetToDefault = () => {
-        if (window.confirm('¿Estás seguro de restaurar el menú original? Se perderán los cambios.')) {
-            setProducts(defaultProducts);
-        }
-    };
-
-    // Sales Actions removed (moved to SalesContext)
-    // Inventory logic moved to processSaleInventory (below)
+    // ... (Other states)
 
     // Customer Actions
-    const addCustomer = (customer) => {
+    const addCustomer = async (customer) => {
         const newCustomer = {
             id: Date.now(),
             ...customer
         };
-        setCustomers([...customers, newCustomer]);
+
+        // Optimistic Update
+        setCustomers(prev => [...prev, newCustomer]);
+
+        // Supabase Insert
+        if (supabase) {
+            const { error } = await supabase.from('clients').insert([newCustomer]);
+            if (error) console.error('Error adding client to Supabase:', error);
+        }
+
         return newCustomer;
     };
 
-    const updateCustomer = (updatedCustomer) => {
-        setCustomers(customers.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+    const updateCustomer = async (updatedCustomer) => {
+        // Optimistic Update
+        setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+
+        // Supabase Update
+        if (supabase) {
+            const { error } = await supabase
+                .from('clients')
+                .update(updatedCustomer)
+                .eq('id', updatedCustomer.id);
+            if (error) console.error('Error updating client in Supabase:', error);
+        }
     };
 
     // Cash Cut Actions

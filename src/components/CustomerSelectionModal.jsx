@@ -3,62 +3,93 @@ import { useProducts } from '../context/ProductContext';
 
 export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
     const { customers, addCustomer, updateCustomer } = useProducts();
-    const [view, setView] = useState('search'); // 'search' | 'create'
-    const [searchTerm, setSearchTerm] = useState('');
+    const [phoneSearch, setPhoneSearch] = useState('');
+    const [name, setName] = useState('');
+    const [addresses, setAddresses] = useState([]);
+    const [selectedAddress, setSelectedAddress] = useState('');
+    const [isNewCustomer, setIsNewCustomer] = useState(false);
+    const [existingCustomer, setExistingCustomer] = useState(null);
 
-    // New Address State
-    const [addingAddressTo, setAddingAddressTo] = useState(null); // Customer ID
-    const [newAddress, setNewAddress] = useState('');
-
-    // New Customer Form State
-    const [newCustomer, setNewCustomer] = useState({
-        name: '',
-        phone: '',
-        addresses: ['']
-    });
-
-    const filteredCustomers = useMemo(() => {
-        if (!searchTerm) return [];
-        const lowerTerm = searchTerm.toLowerCase();
-        return customers.filter(c =>
-            c.name.toLowerCase().includes(lowerTerm) ||
-            c.phone.includes(searchTerm)
-        );
-    }, [customers, searchTerm]);
-
-    const handleCreate = (e) => {
-        e.preventDefault();
-        const customer = addCustomer({
-            name: newCustomer.name,
-            phone: newCustomer.phone,
-            addresses: newCustomer.addresses.filter(a => a.trim() !== '')
-        });
-        // Auto select the first address
-        onSelect(customer, customer.addresses[0]);
-        onClose();
-        resetForm();
-    };
-
-    const handleAddAddress = (customer) => {
-        if (newAddress.trim()) {
-            const updatedCustomer = {
-                ...customer,
-                addresses: [...customer.addresses, newAddress.trim()]
-            };
-            updateCustomer(updatedCustomer);
-            onSelect(updatedCustomer, newAddress.trim());
-            onClose();
-            setAddingAddressTo(null);
-            setNewAddress('');
+    // Reset state when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setPhoneSearch('');
+            setName('');
+            setAddresses([]);
+            setSelectedAddress('');
+            setIsNewCustomer(false);
+            setExistingCustomer(null);
         }
-    };
+    }, [isOpen]);
 
-    const resetForm = () => {
-        setNewCustomer({ name: '', phone: '', addresses: [''] });
-        setView('search');
-        setSearchTerm('');
-        setAddingAddressTo(null);
-        setNewAddress('');
+    // Smart Search Logic
+    useEffect(() => {
+        if (phoneSearch.length >= 3) {
+            const found = customers.find(c => c.phone.includes(phoneSearch));
+            if (found) {
+                setExistingCustomer(found);
+                setName(found.name);
+                setAddresses(found.addresses || []);
+                if (found.addresses && found.addresses.length > 0) {
+                    setSelectedAddress(found.addresses[0]);
+                }
+                setIsNewCustomer(false);
+            } else {
+                setExistingCustomer(null);
+                // Only set new customer mode if phone is long enough to be real
+                if (phoneSearch.length >= 10) {
+                    setIsNewCustomer(true);
+                    setName('');
+                    setAddresses([]);
+                    setSelectedAddress('');
+                }
+            }
+        } else {
+            setExistingCustomer(null);
+            setIsNewCustomer(false);
+        }
+    }, [phoneSearch, customers]);
+
+    const handleSaveAndSelect = (e) => {
+        e.preventDefault();
+
+        // Validate
+        if (!phoneSearch || !name || !selectedAddress) {
+            alert("Por favor completa todos los campos (Teléfono, Nombre, Dirección).");
+            return;
+        }
+
+        let finalCustomer;
+
+        if (existingCustomer) {
+            // Update existing if needed (Hot Editing)
+            const hasChanges = existingCustomer.name !== name || !existingCustomer.addresses.includes(selectedAddress);
+
+            if (hasChanges) {
+                const updatedAddresses = existingCustomer.addresses.includes(selectedAddress)
+                    ? existingCustomer.addresses
+                    : [...existingCustomer.addresses, selectedAddress];
+
+                finalCustomer = {
+                    ...existingCustomer,
+                    name: name,
+                    addresses: updatedAddresses
+                };
+                updateCustomer(finalCustomer);
+            } else {
+                finalCustomer = existingCustomer;
+            }
+        } else {
+            // Create New
+            finalCustomer = addCustomer({
+                name: name,
+                phone: phoneSearch,
+                addresses: [selectedAddress]
+            });
+        }
+
+        onSelect(finalCustomer, selectedAddress);
+        onClose();
     };
 
     if (!isOpen) return null;
@@ -68,7 +99,7 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-gray-900">
-                        {view === 'search' ? 'Seleccionar Cliente' : 'Nuevo Cliente'}
+                        Nuevo Pedido
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,149 +108,108 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
                     </button>
                 </div>
 
-                <div className="p-6">
-                    {view === 'search' ? (
-                        <div className="space-y-4">
+                <form onSubmit={handleSaveAndSelect} className="p-6 space-y-6">
+                    {/* 1. Phone Input (Focus) */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                            Teléfono del Cliente
+                        </label>
+                        <div className="relative">
                             <input
-                                type="text"
-                                placeholder="Buscar por nombre o teléfono..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                type="tel"
+                                value={phoneSearch}
+                                onChange={(e) => setPhoneSearch(e.target.value)}
+                                placeholder="Ingresa el número..."
                                 autoFocus
-                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                className="w-full pl-4 pr-10 py-3 text-lg bg-gray-50 border-2 border-blue-100 rounded-xl focus:border-blue-500 focus:ring-0 focus:outline-none transition-all font-mono"
                             />
+                            <div className="absolute right-3 top-3.5 text-gray-400">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                            </div>
+                        </div>
+                        {existingCustomer && (
+                            <p className="text-xs text-green-600 mt-1 font-semibold flex items-center">
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                                Cliente Encontrado
+                            </p>
+                        )}
+                    </div>
 
-                            <div className="max-h-60 overflow-y-auto space-y-2">
-                                {filteredCustomers.map(customer => (
-                                    <div key={customer.id} className="p-3 border border-gray-100 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-colors group">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <p className="font-bold text-gray-900">{customer.name}</p>
-                                                <p className="text-sm text-gray-500">{customer.phone}</p>
-                                            </div>
-                                        </div>
+                    {/* 2. Name (Auto-filled or Editable) */}
+                    <div className={`transition-all duration-300 ${phoneSearch.length > 3 ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-2'}`}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Nombre del cliente"
+                            className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        />
+                    </div>
 
-                                        <div className="space-y-1">
-                                            {customer.addresses.map((addr, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => {
-                                                        onSelect(customer, addr);
-                                                        onClose();
-                                                    }}
-                                                    className="block w-full text-left text-xs py-1.5 px-3 bg-gray-100 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
-                                                >
-                                                    Entregar en: {addr}
-                                                </button>
-                                            ))}
+                    {/* 3. Address Selector & Manager */}
+                    <div className={`transition-all duration-300 ${phoneSearch.length > 3 ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-2'}`}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de Entrega</label>
 
-                                            {/* Add New Address Inline */}
-                                            {addingAddressTo === customer.id ? (
-                                                <div className="flex space-x-2 mt-2 animate-fade-in">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Nueva dirección..."
-                                                        value={newAddress}
-                                                        onChange={e => setNewAddress(e.target.value)}
-                                                        className="flex-1 p-1.5 text-xs border border-blue-300 rounded focus:outline-none"
-                                                        autoFocus
-                                                        onKeyDown={e => {
-                                                            if (e.key === 'Enter') handleAddAddress(customer);
-                                                        }}
-                                                    />
-                                                    <button
-                                                        onClick={() => handleAddAddress(customer)}
-                                                        className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                                                    >
-                                                        OK
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setAddingAddressTo(customer.id);
-                                                        setNewAddress('');
-                                                    }}
-                                                    className="block w-full text-left text-xs py-1.5 px-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium border border-dashed border-blue-200 mt-1"
-                                                >
-                                                    + Nueva Dirección
-                                                </button>
-                                            )}
-                                        </div>
+                        {addresses.length > 0 ? (
+                            <div className="space-y-2">
+                                <div className="relative">
+                                    <select
+                                        value={selectedAddress}
+                                        onChange={(e) => setSelectedAddress(e.target.value)}
+                                        className="w-full p-3 pr-10 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none"
+                                    >
+                                        {addresses.map((addr, idx) => (
+                                            <option key={idx} value={addr}>{addr}</option>
+                                        ))}
+                                        <option value="new">+ Nueva Dirección...</option>
+                                    </select>
+                                    <div className="absolute right-3 top-3.5 pointer-events-none text-gray-500">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
                                     </div>
-                                ))}
+                                </div>
 
-                                {searchTerm && filteredCustomers.length === 0 && (
-                                    <div className="text-center py-4 text-gray-400">
-                                        No se encontraron clientes
-                                    </div>
+                                {selectedAddress === 'new' && (
+                                    <input
+                                        type="text"
+                                        placeholder="Escribe la nueva dirección..."
+                                        className="w-full p-3 bg-blue-50 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none animate-fade-in"
+                                        autoFocus
+                                        onBlur={(e) => {
+                                            if (e.target.value) setSelectedAddress(e.target.value);
+                                        }}
+                                        onChange={(e) => setSelectedAddress(e.target.value)}
+                                    />
                                 )}
                             </div>
+                        ) : (
+                            <input
+                                type="text"
+                                value={selectedAddress}
+                                onChange={(e) => setSelectedAddress(e.target.value)}
+                                placeholder="Calle, Número, Colonia..."
+                                className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            />
+                        )}
+                    </div>
 
-                            <button
-                                onClick={() => setView('create')}
-                                className="w-full py-3 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30"
-                            >
-                                + Crear Nuevo Cliente
-                            </button>
-                        </div>
-                    ) : (
-                        <form onSubmit={handleCreate} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={newCustomer.name}
-                                    onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                <input
-                                    type="tel"
-                                    required
-                                    value={newCustomer.phone}
-                                    onChange={e => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección Principal</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={newCustomer.addresses[0]}
-                                    onChange={e => {
-                                        const newAddrs = [...newCustomer.addresses];
-                                        newAddrs[0] = e.target.value;
-                                        setNewCustomer({ ...newCustomer, addresses: newAddrs });
-                                    }}
-                                    placeholder="Calle, Número, Colonia..."
-                                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-
-                            <div className="pt-2 flex space-x-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setView('search')}
-                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-                                >
-                                    Volver
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 py-3 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 shadow-lg shadow-green-500/30 transition-all"
-                                >
-                                    Guardar y Seleccionar
-                                </button>
-                            </div>
-                        </form>
-                    )}
-                </div>
+                    {/* Action Button */}
+                    <button
+                        type="submit"
+                        disabled={!phoneSearch || !name || !selectedAddress}
+                        className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95
+                            ${(!phoneSearch || !name || !selectedAddress)
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/30'
+                            }`}
+                    >
+                        {existingCustomer ? 'Confirmar Datos' : 'Crear y Continuar'}
+                    </button>
+                </form>
             </div>
         </div>
     );
