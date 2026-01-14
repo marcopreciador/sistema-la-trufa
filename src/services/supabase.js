@@ -13,4 +13,16 @@ if (SUPABASE_URL.includes("your-project") || SUPABASE_ANON_KEY.includes("your-an
     console.log("Supabase Client Initializing with Hardcoded Keys...", { url: SUPABASE_URL });
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    },
+    db: {
+        schema: 'public'
+    },
+    global: {
+        headers: { 'x-my-custom-header': 'la-trufa-pos' } // Optional: helps with debugging logs
+    }
+});
