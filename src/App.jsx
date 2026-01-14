@@ -201,9 +201,9 @@ function POSApp() {
     }
 
     // Monitor connection via tables subscription
+    // Monitor connection via tables subscription
     tablesSubscription.subscribe((status) => {
-      if (status === 'SUBSCRIBED') setIsConnected(true);
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setIsConnected(false);
+      console.log("Tables Channel Status:", status);
     });
 
     return () => {

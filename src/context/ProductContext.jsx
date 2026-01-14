@@ -141,7 +141,15 @@ export function ProductProvider({ children }) {
             throw new Error("Supabase client not initialized");
         }
 
-        const { error } = await supabase.from('clients').insert([newCustomer]);
+        // Explicitly map fields to ensure clean insert
+        const payload = {
+            id: newCustomer.id,
+            name: newCustomer.name,
+            phone: newCustomer.phone,
+            addresses: newCustomer.addresses
+        };
+
+        const { error } = await supabase.from('clients').insert([payload]);
 
         if (error) {
             console.error('CRITICAL: Error adding client to Supabase:', error);
