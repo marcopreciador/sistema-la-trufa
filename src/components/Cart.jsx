@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Cart({ items, activeOrder, total, committedTotal = 0, discount = 0, onSendToKitchen, onPay, onUpdateQuantity, onEditItem, onVoid, onApplyDiscount, onPrintPreCheck }) {
+export function Cart({ items, activeOrder, total, committedTotal = 0, discount = 0, onSendToKitchen, onPay, onUpdateQuantity, onEditItem, onVoid, onApplyDiscount, onPrintPreCheck, onConfirmDelivery }) {
     const grandTotal = total + committedTotal;
 
     return (
@@ -130,29 +130,46 @@ export function Cart({ items, activeOrder, total, committedTotal = 0, discount =
                         </button>
                     )}
 
-                    <button
-                        onClick={onSendToKitchen}
-                        disabled={items.length === 0}
-                        className={`py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
-              ${items.length === 0
-                                ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                                : 'bg-blue-500 hover:bg-blue-600 active:scale-95 hover:shadow-blue-500/30'
-                            }`}
-                    >
-                        Enviar a Cocina
-                    </button>
+                    {/* Kitchen vs Cashier Workflow */}
+                    {activeOrder.type === 'delivery' ? (
+                        <button
+                            onClick={onConfirmDelivery}
+                            disabled={items.length === 0 && committedTotal === 0}
+                            className={`col-span-2 py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
+                                ${items.length === 0 && committedTotal === 0
+                                    ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                    : 'bg-green-600 hover:bg-green-700 active:scale-95 hover:shadow-green-600/30'
+                                }`}
+                        >
+                            Confirmar Pedido
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={onSendToKitchen}
+                                disabled={items.length === 0}
+                                className={`py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
+                                    ${items.length === 0
+                                        ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                        : 'bg-blue-500 hover:bg-blue-600 active:scale-95 hover:shadow-blue-500/30'
+                                    }`}
+                            >
+                                Enviar a Cocina
+                            </button>
 
-                    <button
-                        onClick={onPay}
-                        disabled={grandTotal === 0}
-                        className={`py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
-              ${grandTotal === 0
-                                ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                                : 'bg-green-500 hover:bg-green-600 active:scale-95 hover:shadow-green-500/30'
-                            }`}
-                    >
-                        Cobrar
-                    </button>
+                            <button
+                                onClick={onPay}
+                                disabled={grandTotal === 0}
+                                className={`py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
+                                    ${grandTotal === 0
+                                        ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                                        : 'bg-green-500 hover:bg-green-600 active:scale-95 hover:shadow-green-500/30'
+                                    }`}
+                            >
+                                Cerrar Mesa
+                            </button>
+                        </>
+                    )}
                 </div>
 
                 {committedTotal > 0 && (
