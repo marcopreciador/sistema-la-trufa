@@ -14,6 +14,7 @@ import { CustomerSelectionModal } from './components/CustomerSelectionModal';
 import { CustomerDirectoryModal } from './components/CustomerDirectoryModal';
 import { LoginScreen } from './components/LoginScreen';
 import { PinModal } from './components/PinModal';
+import { SmartCartModal } from './components/SmartCartModal';
 import ErrorBoundary from './components/ErrorBoundary';
 import { products as defaultProducts } from './data/products';
 
@@ -65,6 +66,8 @@ function POSApp() {
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(false);
 
   // POS State
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -794,11 +797,6 @@ function POSApp() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-500">
-                  {safeActiveOrder.type === 'delivery'
-                    ? (safeActiveOrder.customer?.name || 'Cliente')
-                    : 'Mesa de Servicio'}
-                </p>
               </div>
             </div>
 
@@ -816,20 +814,41 @@ function POSApp() {
                 </svg>
               </div>
 
-              {/* Merge Tables Button (Only for Tables) */}
+              {/* Secondary Actions Menu (Mobile & Desktop) */}
               {safeActiveOrder.type !== 'delivery' && (
-                <button
-                  onClick={hasMergedTables ? handleUnmergeTable : () => setIsMergeModalOpen(true)}
-                  className={`px-4 py-2.5 rounded-xl font-bold shadow-sm border transition-all flex items-center space-x-2 ${hasMergedTables
-                    ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-100'
-                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    }`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  <span>{hasMergedTables ? 'Desvincular' : 'Unir Mesas'}</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMoreOptionsOpen(!isMoreOptionsOpen)}
+                    className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-700 shadow-sm transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
+
+                  {isMoreOptionsOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setIsMoreOptionsOpen(false)}
+                      ></div>
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden animate-fade-in">
+                        <button
+                          onClick={() => {
+                            hasMergedTables ? handleUnmergeTable() : setIsMergeModalOpen(true);
+                            setIsMoreOptionsOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 text-sm font-medium flex items-center space-x-2"
+                        >
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                          <span>{hasMergedTables ? 'Desvincular Mesas' : 'Unir Mesas'}</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -842,7 +861,7 @@ function POSApp() {
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pb-20">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pb-20">
             {filteredProducts.map(product => (
               <ProductCardItem
                 key={product.id}
@@ -857,8 +876,8 @@ function POSApp() {
         </div>
       </main>
 
-      {/* Sidebar - Cart */}
-      <aside className="w-full md:w-96 h-auto md:h-full z-20 border-t md:border-t-0 md:border-l border-gray-200 bg-white shadow-xl md:shadow-none">
+      {/* Sidebar - Cart (Desktop Only) */}
+      <aside className="hidden md:block w-full md:w-96 h-auto md:h-full z-20 border-t md:border-t-0 md:border-l border-gray-200 bg-white shadow-xl md:shadow-none">
         <Cart
           items={activeOrder.items}
           activeOrder={activeOrder}
@@ -1037,6 +1056,47 @@ function POSApp() {
           </div>
         </div>
       )}
+      {/* Floating Cart Button (Mobile Only) */}
+      <div className="fixed bottom-4 right-4 z-40 md:hidden">
+        <button
+          onClick={() => setIsCartOpen(true)}
+          className="bg-blue-600 text-white px-6 py-4 rounded-full shadow-xl shadow-blue-600/30 flex items-center space-x-3 hover:bg-blue-700 active:scale-95 transition-all"
+        >
+          <div className="relative">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            {activeOrder.items.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-blue-600">
+                {activeOrder.items.length}
+              </span>
+            )}
+          </div>
+          <span className="font-bold text-lg">Ver Orden</span>
+          <span className="bg-blue-800/50 px-2 py-1 rounded-lg text-sm font-mono">
+            ${currentTotal.toFixed(2)}
+          </span>
+        </button>
+      </div>
+
+      <SmartCartModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cartProps={{
+          items: activeOrder.items,
+          activeOrder: activeOrder,
+          total: currentTotal,
+          committedTotal: committedTotal,
+          discount: activeOrder.discount || 0,
+          onSendToKitchen: handleSendToKitchen,
+          onPay: handlePay,
+          onUpdateQuantity: handleUpdateQuantity,
+          onEditItem: handleEditCartItem,
+          onVoid: currentUser.role === 'Admin' ? handleVoidOrder : undefined,
+          onApplyDiscount: handleApplyDiscount,
+          onPrintPreCheck: handlePrintPreCheck
+        }}
+      />
     </div>
   );
 }
