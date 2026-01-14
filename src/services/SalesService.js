@@ -5,13 +5,9 @@ const LOCAL_STORAGE_KEY = 'la-trufa-sales-history';
 export const SalesService = {
     // Add a new sale
     addSale: async (saleData) => {
-        // 1. Always save to LocalStorage (Immediate Backup)
-        const localSales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
         const newSale = { ...saleData, id: saleData.id || Date.now(), synced: false };
-        localSales.push(newSale);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localSales));
 
-        // 2. Try to save to Supabase if available
+        // 1. Mandatory Supabase Write
         if (supabase) {
             try {
                 const { error } = await supabase
@@ -27,18 +23,19 @@ export const SalesService = {
                         status: newSale.status || 'completed'
                     }]);
 
-                if (!error) {
-                    // Mark as synced in local storage
-                    const updatedSales = localSales.map(s =>
-                        s.id === newSale.id ? { ...s, synced: true } : s
-                    );
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedSales));
-                    return { ...newSale, synced: true };
-                }
+                if (error) throw error;
+                newSale.synced = true;
             } catch (err) {
-                console.warn('Supabase insert failed, using local only:', err);
+                console.error('CRITICAL: Supabase insert failed:', err);
+                // We still save to local storage as backup, but we log the error loudly
+                // alert("Error al guardar en la nube. Se guardará localmente.");
             }
         }
+
+        // 2. Local Storage Backup
+        const localSales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+        localSales.push(newSale);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(localSales));
 
         return newSale;
     },
