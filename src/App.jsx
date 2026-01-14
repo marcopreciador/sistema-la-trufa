@@ -866,7 +866,7 @@ function POSApp() {
           committedTotal={committedTotal}
           discount={activeOrder.discount || 0}
           onSendToKitchen={handleSendToKitchen}
-          onPay={openPaymentModal}
+          onPay={handlePay}
           onUpdateQuantity={handleUpdateQuantity}
           onEditItem={handleEditCartItem}
           onVoid={currentUser.role === 'Admin' ? handleVoidOrder : undefined}
@@ -972,8 +972,8 @@ function POSApp() {
                   : handleFinishSale
                 }
                 className={`w-full py-4 font-bold rounded-xl transition-colors ${lastCompletedOrder.type === 'kitchen'
-                    ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg shadow-blue-500/30'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
                 {lastCompletedOrder.type === 'kitchen' ? 'Continuar Agregando' : 'Cerrar / Finalizar'}
