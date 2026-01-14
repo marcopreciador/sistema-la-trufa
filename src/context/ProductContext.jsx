@@ -136,16 +136,19 @@ export function ProductProvider({ children }) {
             ...customer
         };
 
-        // Supabase Insert (Primary)
-        if (supabase) {
-            const { error } = await supabase.from('clients').insert([newCustomer]);
-            if (error) {
-                console.error('CRITICAL: Error adding client to Supabase:', error);
-                // alert("Error al guardar cliente en la nube.");
-            }
+        // Supabase Insert (Mandatory)
+        if (!supabase) {
+            throw new Error("Supabase client not initialized");
         }
 
-        // Optimistic Update / Local Fallback
+        const { error } = await supabase.from('clients').insert([newCustomer]);
+
+        if (error) {
+            console.error('CRITICAL: Error adding client to Supabase:', error);
+            throw error; // Throw to UI
+        }
+
+        // Only update local state if Supabase succeeds
         setCustomers(prev => [...prev, newCustomer]);
 
         return newCustomer;

@@ -1460,7 +1460,6 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 function App() {
   const [isReady, setIsReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false); // Connection State
-  const [isConnected, setIsConnected] = useState(false); // Connection State
 
   useEffect(() => {
     const init = () => {
