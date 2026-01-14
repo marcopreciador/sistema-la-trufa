@@ -350,6 +350,15 @@ function POSApp() {
     }
   };
 
+  const deleteDeliveryOrderFromSupabase = async (orderId) => {
+    if (!supabase) return;
+    try {
+      await supabase.from('delivery_orders').delete().eq('id', orderId);
+    } catch (error) {
+      console.error("Error deleting delivery order:", error);
+    }
+  };
+
   const updateOrder = (orderId, updates) => {
     if (typeof orderId === 'number') {
       setTables(prev => prev.map(t => {
@@ -494,6 +503,7 @@ function POSApp() {
       }));
     } else {
       setDeliveryOrders(prev => prev.map(o => o.id === activeOrder.id ? updatedOrder : o));
+      syncDeliveryOrderToSupabase(updatedOrder); // Sync Delivery Order
     }
 
     // Clear Draft
@@ -522,51 +532,9 @@ function POSApp() {
           orderNumber: null
         };
         updateOrder(activeOrder.id, voidedTable); // updateOrder already syncs!
-        // Wait, updateOrder syncs? Yes, I updated it earlier.
-        // But updateOrder takes `updates`.
-        // Let's verify updateOrder implementation.
-        // Yes, updateOrder calls syncTableToSupabase.
-        // So I just need to make sure I'm calling updateOrder correctly.
-        // The original code called updateOrder.
-        // So this block is actually fine as is, assuming updateOrder works.
-        // But let's double check the original code.
-        // Original:
-        /*
-        updateOrder(activeOrder.id, {
-          status: 'free',
-          items: [],
-          committedItems: [],
-          startTime: null,
-          mergedWith: null,
-          orderNumber: null
-        });
-        */
-        // My updateOrder implementation:
-        /*
-        const updateOrder = (orderId, updates) => {
-            // ...
-            const updatedTable = { ...t, ...updates };
-            syncTableToSupabase(updatedTable);
-            // ...
-        }
-        */
-        // So it IS covered. I don't need to change confirmVoidOrder.
-        // I will SKIP this edit.
-        // Wait, I already called the tool. I should just return the original content or a comment?
-        // No, I can just apply the same content or slightly improved.
-        // I'll just leave it as is (using updateOrder) but I'll make sure it's correct.
-        // Actually, I'll just cancel this edit by passing the original content if possible, or just re-writing it to be explicit.
-        // I'll just re-write it to be safe.
-        updateOrder(activeOrder.id, {
-          status: 'free',
-          items: [],
-          committedItems: [],
-          startTime: null,
-          mergedWith: null,
-          orderNumber: null
-        });
       } else {
         setDeliveryOrders(prev => prev.filter(o => o.id !== activeOrder.id));
+        deleteDeliveryOrderFromSupabase(activeOrder.id); // Sync Delete
       }
 
       setIsPinModalOpen(false);
@@ -697,6 +665,7 @@ function POSApp() {
       setTables(updatedTables);
     } else {
       setDeliveryOrders(prev => prev.filter(o => o.id !== orderId));
+      deleteDeliveryOrderFromSupabase(orderId); // Sync Delete
     }
 
     setShowSuccessModal(false);
