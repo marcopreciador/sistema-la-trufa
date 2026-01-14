@@ -96,38 +96,36 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
         performSearch();
     }, [phoneSearch, customers]);
 
+    const [isSaving, setIsSaving] = useState(false);
+
     const handleSaveAndSelect = async (e) => {
         e.preventDefault();
+        if (isSaving) return;
 
         // Validate
         if (!phoneSearch || !name || !selectedAddress) {
-            alert("Por favor completa todos los campos (Teléfono, Nombre, Dirección).");
+            alert("Por favor completa todos los campos.");
             return;
         }
+
+        setIsSaving(true);
 
         try {
             let finalCustomer;
 
-            if (existingCustomer) {
-                // Update existing if needed (Hot Editing)
-                const hasChanges = existingCustomer.name !== name || !existingCustomer.addresses.includes(selectedAddress);
+            // Simple Save Logic: If it has an ID, update. If not, create.
+            if (existingCustomer && existingCustomer.id) {
+                const updatedAddresses = existingCustomer.addresses.includes(selectedAddress)
+                    ? existingCustomer.addresses
+                    : [...existingCustomer.addresses, selectedAddress];
 
-                if (hasChanges) {
-                    const updatedAddresses = existingCustomer.addresses.includes(selectedAddress)
-                        ? existingCustomer.addresses
-                        : [...existingCustomer.addresses, selectedAddress];
-
-                    finalCustomer = {
-                        ...existingCustomer,
-                        name: name,
-                        addresses: updatedAddresses
-                    };
-                    await updateCustomer(finalCustomer); // Await update
-                } else {
-                    finalCustomer = existingCustomer;
-                }
+                finalCustomer = {
+                    ...existingCustomer,
+                    name: name,
+                    addresses: updatedAddresses
+                };
+                await updateCustomer(finalCustomer);
             } else {
-                // Create New
                 finalCustomer = await addCustomer({
                     name: name,
                     phone: phoneSearch,
@@ -139,12 +137,9 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
             onClose();
         } catch (error) {
             console.error("Error saving customer:", error);
-            // Enhanced Error Feedback
-            const errorMessage = error.message || "Error desconocido";
-            const errorDetails = error.details || "";
-            const errorHint = error.hint || "";
-
-            alert(`Error al guardar en la nube:\n\nMensaje: ${errorMessage}\nDetalles: ${errorDetails}\nSugerencia: ${errorHint}\n\nVerifique conexión y permisos.`);
+            alert(`Error de Conexión: ${error.message || 'Intente de nuevo'}`);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -155,9 +150,9 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                     <h2 className="text-xl font-bold text-gray-900">
-                        Nuevo Pedido
+                        {isSaving ? 'Guardando...' : 'Nuevo Pedido'}
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                    <button onClick={onClose} disabled={isSaving} className="text-gray-400 hover:text-gray-600 disabled:opacity-50">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -256,14 +251,24 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
                     {/* Action Button */}
                     <button
                         type="submit"
-                        disabled={!phoneSearch || !name || !selectedAddress}
+                        disabled={!phoneSearch || !name || !selectedAddress || isSaving}
                         className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95
-                            ${(!phoneSearch || !name || !selectedAddress)
+                            ${(!phoneSearch || !name || !selectedAddress || isSaving)
                                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                 : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/30'
                             }`}
                     >
-                        {existingCustomer ? 'Confirmar Datos' : 'Crear y Continuar'}
+                        {isSaving ? (
+                            <span className="flex items-center justify-center">
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Guardando...
+                            </span>
+                        ) : (
+                            existingCustomer ? 'Confirmar Datos' : 'Crear y Continuar'
+                        )}
                     </button>
                 </form>
             </div>
