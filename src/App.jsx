@@ -149,7 +149,6 @@ function POSApp() {
       .subscribe();
 
     // 4. Print Job Listener (Mac/Desktop Only)
-    // This allows the Mac to act as a Print Server for the iPhone
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     let printSubscription = null;
 
@@ -159,30 +158,32 @@ function POSApp() {
         .channel('print_jobs_channel')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'print_jobs' }, async (payload) => {
           console.log("New Print Job Received:", payload.new.id);
-
-          // Process Print Job
           const { content } = payload.new;
-
-          // Use local print (or send to local print server)
-          // We can reuse TicketService logic or direct print
-          // For simplicity, we'll try to open a print window or send to localhost:3001
           try {
-            // Send to Local Print Server (Python/Node)
             await fetch('http://localhost:3001/print', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ html: content })
             });
-
-            // Update status to 'printed'
             await supabase.from('print_jobs').update({ status: 'printed' }).eq('id', payload.new.id);
           } catch (err) {
             console.error("Failed to process print job:", err);
-            // Fallback: Open window? Might be blocked if not user-initiated.
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') setIsConnected(true);
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setIsConnected(false);
+        });
+    } else {
+      // On mobile, we still want to show connected status based on other channels
+      // We can use the tables channel status
     }
+
+    // Monitor connection via tables subscription
+    tablesSubscription.subscribe((status) => {
+      if (status === 'SUBSCRIBED') setIsConnected(true);
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setIsConnected(false);
+    });
 
     return () => {
       tablesSubscription.unsubscribe();
@@ -1423,14 +1424,20 @@ function POSApp() {
         isOpen={isInfoModalOpen}
         onClose={() => setIsInfoModalOpen(false)}
       />
+      <ConnectionStatus isConnected={isConnected} />
     </div>
   );
 }
 
 
 
+import { ConnectionStatus } from './components/ConnectionStatus';
+
+// ... (existing imports)
+
 function App() {
   const [isReady, setIsReady] = useState(false);
+  const [isConnected, setIsConnected] = useState(false); // Connection State
 
   useEffect(() => {
     const init = () => {
