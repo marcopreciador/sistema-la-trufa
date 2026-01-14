@@ -5,7 +5,7 @@ import { ProductFormModal } from './ProductFormModal';
 import { ReportsDashboard } from './ReportsDashboard';
 import { CashCutDashboard } from './CashCutDashboard';
 
-export function AdminDashboard({ onClose }) {
+export function AdminDashboard({ onClose, onOpenInventory }) {
     const { products, addProduct, updateProduct, deleteProduct, resetToDefault, expenses, addExpense, deleteExpense, inventory, addIngredient, deleteIngredient } = useProducts();
     const { users, addUser, deleteUser, currentUser } = useUsers();
 
@@ -222,11 +222,17 @@ export function AdminDashboard({ onClose }) {
                                 Gastos
                             </button>
                             <button
+                                onClick={onOpenInventory}
+                                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap text-blue-600 bg-blue-50 hover:bg-blue-100`}
+                            >
+                                ✨ Gestión IA (OCR)
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('inventory')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'inventory' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
                                     }`}
                             >
-                                Inventario
+                                Inventario Manual
                             </button>
                             <button
                                 onClick={() => setActiveTab('settings')}

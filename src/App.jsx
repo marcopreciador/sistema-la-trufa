@@ -16,6 +16,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { PinModal } from './components/PinModal';
 import { SmartCartModal } from './components/SmartCartModal';
 import { ProductInfoModal } from './components/ProductInfoModal';
+import { InventoryView } from './components/InventoryView';
 import ErrorBoundary from './components/ErrorBoundary';
 import { products as defaultProducts } from './data/products';
 
@@ -66,6 +67,7 @@ function POSApp() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
+  const [isInventoryViewOpen, setIsInventoryViewOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(false);
@@ -598,8 +600,20 @@ function POSApp() {
     return <LoginScreen />;
   }
 
+  if (isInventoryViewOpen) {
+    return <InventoryView onBack={() => setIsInventoryViewOpen(false)} />;
+  }
+
   if (isAdminOpen) {
-    return <AdminDashboard onClose={() => setIsAdminOpen(false)} />;
+    return (
+      <AdminDashboard
+        onClose={() => setIsAdminOpen(false)}
+        onOpenInventory={() => {
+          setIsAdminOpen(false);
+          setIsInventoryViewOpen(true);
+        }}
+      />
+    );
   }
 
   // --- RENDER DASHBOARD ---

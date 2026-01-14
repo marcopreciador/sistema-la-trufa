@@ -38,6 +38,18 @@ export function ProductProvider({ children }) {
         }
     });
 
+    // Purchases History State
+    const [purchases, setPurchases] = useState(() => {
+        try {
+            const savedPurchases = localStorage.getItem('la-trufa-purchases');
+            const parsed = savedPurchases ? JSON.parse(savedPurchases) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.error('Error loading purchases:', error);
+            return [];
+        }
+    });
+
     // Inventory State
     const [inventory, setInventory] = useState(() => {
         const savedInventory = localStorage.getItem('la-trufa-inventory');
@@ -74,6 +86,10 @@ export function ProductProvider({ children }) {
     useEffect(() => {
         localStorage.setItem('la-trufa-expenses', JSON.stringify(expenses));
     }, [expenses]);
+
+    useEffect(() => {
+        localStorage.setItem('la-trufa-purchases', JSON.stringify(purchases));
+    }, [purchases]);
 
     useEffect(() => {
         localStorage.setItem('la-trufa-inventory', JSON.stringify(inventory));
@@ -165,6 +181,54 @@ export function ProductProvider({ children }) {
         setInventory(inventory.filter(i => i.id !== id));
     };
 
+    // Purchase & Stock Update Logic (OCR Integration)
+    const recordPurchase = (purchaseData) => {
+        // 1. Record the Purchase in History
+        const newPurchase = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            ...purchaseData
+        };
+        setPurchases([newPurchase, ...purchases]);
+
+        // 2. Record as Expense automatically
+        addExpense({
+            description: `Compra: ${purchaseData.merchant || 'Proveedor Desconocido'}`,
+            amount: purchaseData.totalAmount,
+            category: 'Insumos',
+            userName: 'Sistema (OCR)'
+        });
+
+        // 3. Update Inventory Stock & Last Cost
+        let currentInv = [...inventory];
+
+        purchaseData.items.forEach(item => {
+            const existingItemIndex = currentInv.findIndex(i => i.name.toLowerCase() === item.name.toLowerCase());
+
+            if (existingItemIndex >= 0) {
+                // Update existing
+                const existingItem = currentInv[existingItemIndex];
+                currentInv[existingItemIndex] = {
+                    ...existingItem,
+                    stock: parseFloat(existingItem.stock) + parseFloat(item.quantity),
+                    lastCost: item.unitPrice, // Update last cost
+                    unit: existingItem.unit || 'Pieza' // Preserve unit
+                };
+            } else {
+                // Add new ingredient if not exists
+                currentInv.push({
+                    id: Date.now() + Math.random(),
+                    name: item.name,
+                    stock: parseFloat(item.quantity),
+                    unit: 'Pieza', // Default
+                    lastCost: item.unitPrice
+                });
+            }
+        });
+
+        setInventory(currentInv);
+    };
+
     // Process Inventory for Sale (Sniper Mode Logic)
     const processSaleInventory = (items) => {
         try {
@@ -248,6 +312,8 @@ export function ProductProvider({ children }) {
             addIngredient,
             updateIngredient,
             deleteIngredient,
+            purchases,
+            recordPurchase,
             deductStock,
             // Drafts
             tableDrafts,
