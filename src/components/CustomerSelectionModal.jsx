@@ -27,34 +27,47 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
     useEffect(() => {
         const performSearch = async () => {
             if (phoneSearch.length >= 3) {
-                // 1. Local Search
-                const found = customers.find(c => c.phone.includes(phoneSearch));
-                if (found) {
-                    setExistingCustomer(found);
-                    setName(found.name);
-                    setAddresses(found.addresses || []);
-                    if (found.addresses && found.addresses.length > 0) {
-                        setSelectedAddress(found.addresses[0]);
-                    }
-                    setIsNewCustomer(false);
-                } else {
-                    // 2. Global Search (Supabase)
-                    let remoteFound = null;
-                    if (phoneSearch.length >= 10 && supabase) {
-                        try {
-                            const { data, error } = await supabase
-                                .from('clients')
-                                .select('*')
-                                .eq('phone', phoneSearch)
-                                .single();
+                // 1. Global Search (Supabase First)
+                let remoteFound = null;
+                if (phoneSearch.length >= 7 && supabase) { // Lowered threshold to 7 for faster lookup
+                    try {
+                        const { data, error } = await supabase
+                            .from('clients')
+                            .select('*')
+                            .eq('phone', phoneSearch)
+                            .single();
 
-                            if (data && !error) {
-                                remoteFound = data;
-                            }
-                        } catch (err) {
+                        if (data && !error) {
+                            remoteFound = data;
+                        }
+                    } catch (err) {
+                        // Ignore "Row not found" errors, just log others
+                        if (err.code !== 'PGRST116') {
                             console.error("Error searching client:", err);
                         }
                     }
+                }
+
+                // 2. Local Fallback (if not found remotely)
+                const localFound = customers.find(c => c.phone.includes(phoneSearch));
+
+                if (remoteFound) {
+                    setExistingCustomer(remoteFound);
+                    setName(remoteFound.name);
+                    setAddresses(remoteFound.addresses || []);
+                    if (remoteFound.addresses && remoteFound.addresses.length > 0) {
+                        setSelectedAddress(remoteFound.addresses[0]);
+                    }
+                    setIsNewCustomer(false);
+                } else if (localFound) {
+                    setExistingCustomer(localFound);
+                    setName(localFound.name);
+                    setAddresses(localFound.addresses || []);
+                    if (localFound.addresses && localFound.addresses.length > 0) {
+                        setSelectedAddress(localFound.addresses[0]);
+                    }
+                    setIsNewCustomer(false);
+                } else {
 
                     if (remoteFound) {
                         setExistingCustomer(remoteFound);

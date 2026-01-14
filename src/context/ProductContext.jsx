@@ -31,20 +31,9 @@ export function ProductProvider({ children }) {
             if (!error && data) {
                 let finalCustomers = data;
 
-                // Seed "Marco" for testing/demo if not exists
-                const marcoExists = data.find(c => c.phone === '3123015011');
-                if (!marcoExists) {
-                    const marco = {
-                        id: Date.now(),
-                        name: 'Marco',
-                        phone: '3123015011',
-                        addresses: ['Mariano Matamoros #501']
-                    };
-                    const { error: insertError } = await supabase.from('clients').insert([marco]);
-                    if (!insertError) {
-                        finalCustomers = [...data, marco];
-                    }
-                }
+                // Removed hardcoded seeding logic to enforce real data
+                setCustomers(finalCustomers);
+                localStorage.setItem('la-trufa-customers', JSON.stringify(finalCustomers));
 
                 setCustomers(finalCustomers);
                 localStorage.setItem('la-trufa-customers', JSON.stringify(finalCustomers));
