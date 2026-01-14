@@ -811,7 +811,7 @@ function POSApp() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gray-100 overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-100 overflow-hidden">
       {/* Main Content - Menu */}
       <main className="flex-1 flex flex-col h-full overflow-hidden w-full">
         <header className="px-4 md:px-8 pt-4 md:pt-8 pb-4 bg-gray-100 z-50 shadow-sm relative">
@@ -898,7 +898,10 @@ function POSApp() {
           <CategoryFilter
             categories={categories}
             activeCategory={selectedCategory}
-            onSelect={setSelectedCategory}
+            onSelect={(category) => {
+              setSelectedCategory(category);
+              setSearchQuery(''); // Clear search when changing category to avoid confusion
+            }}
           />
         </header>
 
