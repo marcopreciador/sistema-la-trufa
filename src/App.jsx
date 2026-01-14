@@ -290,25 +290,25 @@ function POSApp() {
     setActiveOrderId(newOrder.id);
   };
 
-  const handleConfirmDelivery = () => {
+  // Global State
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleConfirmDelivery = async () => {
     if (!activeOrder) return;
+
+    setIsProcessing(true);
+
+    // Simulate processing delay for UX (Spinner)
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     // 1. Print Kitchen Ticket
     handleSendToKitchen();
 
     // 2. Open Payment Modal immediately
-    // We need to wait for state update from handleSendToKitchen? 
-    // Actually handleSendToKitchen updates state but we can just open modal.
-    // However, handleSendToKitchen might set showSuccessModal. We should suppress that for delivery if we want immediate payment.
-    // But user request says: "al confirmar el pedido se disparen ambos procesos: impresión de comanda e inicio de cobro automáticamente."
-
-    // Let's modify handleSendToKitchen to accept a flag or just call logic directly.
-    // Easier: Just call handlePay() after a small timeout or directly.
-    // But handleSendToKitchen sets showSuccessModal(true). We might want to avoid that for delivery flow until payment is done.
-
     setTimeout(() => {
       setShowSuccessModal(false); // Close success modal from kitchen print
       handlePay(); // Open payment modal
+      setIsProcessing(false);
     }, 500);
   };
 
@@ -1172,6 +1172,7 @@ function POSApp() {
           onApplyDiscount={handleApplyDiscount}
           onPrintPreCheck={handlePrintPreCheck}
           onConfirmDelivery={handleConfirmDelivery}
+          isProcessing={isProcessing}
         />
       </aside>
 

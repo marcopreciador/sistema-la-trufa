@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Cart({ items, activeOrder, total, committedTotal = 0, discount = 0, onSendToKitchen, onPay, onUpdateQuantity, onEditItem, onVoid, onApplyDiscount, onPrintPreCheck, onConfirmDelivery }) {
+export function Cart({ items, activeOrder, total, committedTotal = 0, discount = 0, onSendToKitchen, onPay, onUpdateQuantity, onEditItem, onVoid, onApplyDiscount, onPrintPreCheck, onConfirmDelivery, isProcessing = false }) {
     const grandTotal = total + committedTotal;
 
     return (
@@ -133,15 +133,25 @@ export function Cart({ items, activeOrder, total, committedTotal = 0, discount =
                     {/* Kitchen vs Cashier Workflow */}
                     {activeOrder.type === 'delivery' ? (
                         <button
-                            onClick={onPay} // Direct to Payment
-                            disabled={items.length === 0 && committedTotal === 0}
-                            className={`col-span-2 py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
+                            onClick={onConfirmDelivery} // Use onConfirmDelivery for "One Click" flow
+                            disabled={items.length === 0 && committedTotal === 0 || isProcessing}
+                            className={`col-span-2 py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 flex items-center justify-center space-x-2
                                 ${items.length === 0 && committedTotal === 0
                                     ? 'bg-gray-300 cursor-not-allowed shadow-none'
                                     : 'bg-green-600 hover:bg-green-700 active:scale-95 hover:shadow-green-600/30'
                                 }`}
                         >
-                            Pagar y Mandar a Cocina
+                            {isProcessing ? (
+                                <>
+                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Procesando...</span>
+                                </>
+                            ) : (
+                                <span>Pagar y Mandar a Cocina</span>
+                            )}
                         </button>
                     ) : (
                         <>
