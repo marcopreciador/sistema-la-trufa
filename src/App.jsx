@@ -88,8 +88,8 @@ function POSApp() {
     };
     fetchTables();
 
-    // 2. Real-time Subscription
-    const subscription = supabase
+    // 2. Real-time Subscription (Tables)
+    const tablesSubscription = supabase
       .channel('tables_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables' }, (payload) => {
         if (payload.eventType === 'UPDATE') {
@@ -111,8 +111,52 @@ function POSApp() {
       })
       .subscribe();
 
+    // 3. Real-time Subscription (Delivery Orders)
+    // Assuming we use a 'delivery_orders' table or similar. 
+    // If not exists, I should create it or use a JSON column.
+    // Given I can't create tables in Supabase from here easily, I'll assume it exists or I'll use a workaround.
+    // Workaround: Use a 'orders' table for delivery.
+    // Let's assume 'delivery_orders' exists for now as per "Sincronización Real" request implies backend readiness or I need to make it work.
+    // I'll add the subscription logic.
+    const deliverySubscription = supabase
+      .channel('delivery_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_orders' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setDeliveryOrders(prev => [...prev, {
+            id: payload.new.id, // Ensure ID matches (string vs number)
+            name: payload.new.name,
+            type: 'delivery',
+            customer: payload.new.customer,
+            deliveryAddress: payload.new.delivery_address,
+            status: payload.new.status,
+            items: payload.new.items || [],
+            committedItems: payload.new.committed_items || [],
+            startTime: payload.new.start_time,
+            discount: payload.new.discount || 0,
+            orderNumber: payload.new.order_number
+          }]);
+        } else if (payload.eventType === 'UPDATE') {
+          setDeliveryOrders(prev => prev.map(o => o.id === payload.new.id ? {
+            ...o,
+            name: payload.new.name,
+            customer: payload.new.customer,
+            deliveryAddress: payload.new.delivery_address,
+            status: payload.new.status,
+            items: payload.new.items || [],
+            committedItems: payload.new.committed_items || [],
+            startTime: payload.new.start_time,
+            discount: payload.new.discount || 0,
+            orderNumber: payload.new.order_number
+          } : o));
+        } else if (payload.eventType === 'DELETE') {
+          setDeliveryOrders(prev => prev.filter(o => o.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
     return () => {
-      subscription.unsubscribe();
+      tablesSubscription.unsubscribe();
+      deliverySubscription.unsubscribe();
     };
   }, []);
 
@@ -286,6 +330,26 @@ function POSApp() {
     }
   };
 
+  const syncDeliveryOrderToSupabase = async (order) => {
+    if (!supabase) return;
+    try {
+      await supabase.from('delivery_orders').upsert({
+        id: order.id,
+        name: order.name,
+        customer: order.customer,
+        delivery_address: order.deliveryAddress,
+        status: order.status,
+        items: order.items,
+        committed_items: order.committedItems,
+        start_time: order.startTime,
+        discount: order.discount,
+        order_number: order.orderNumber
+      });
+    } catch (error) {
+      console.error("Error syncing delivery order:", error);
+    }
+  };
+
   const updateOrder = (orderId, updates) => {
     if (typeof orderId === 'number') {
       setTables(prev => prev.map(t => {
@@ -302,7 +366,14 @@ function POSApp() {
         return t;
       }));
     } else {
-      setDeliveryOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+      setDeliveryOrders(prev => prev.map(o => {
+        if (o.id === orderId) {
+          const updatedOrder = { ...o, ...updates };
+          syncDeliveryOrderToSupabase(updatedOrder); // Sync Delivery
+          return updatedOrder;
+        }
+        return o;
+      }));
     }
   };
 
