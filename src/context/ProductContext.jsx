@@ -41,20 +41,19 @@ export function ProductProvider({ children }) {
         };
         fetchCustomers();
 
+        /*
+        // REALTIME DISABLED TEMPORARILY
         // 2. Real-time Subscription
         const subscription = supabase
             .channel('clients_channel')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, (payload) => {
-                if (payload.eventType === 'INSERT') {
-                    setCustomers(prev => [...prev, payload.new]);
-                } else if (payload.eventType === 'UPDATE') {
-                    setCustomers(prev => prev.map(c => c.id === payload.new.id ? payload.new : c));
-                }
+                // ...
             })
             .subscribe();
+        */
 
         return () => {
-            subscription.unsubscribe();
+            // subscription.unsubscribe();
         };
     }, []);
 

@@ -88,128 +88,32 @@ function POSApp() {
     };
     fetchTables();
 
+    /* 
+    // REALTIME DISABLED TEMPORARILY TO FIX LOOP
     // 2. Real-time Subscription (Tables)
     const tablesSubscription = supabase
       .channel('tables_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          setTables(prev => prev.map(t => {
-            if (t.id === payload.new.id) {
-              return {
-                ...t,
-                status: payload.new.status,
-                items: payload.new.items || [],
-                committedItems: payload.new.committed_items || [],
-                startTime: payload.new.start_time,
-                mergedWith: payload.new.merged_with,
-                orderNumber: payload.new.order_number
-              };
-            }
-            return t;
-          }));
-        }
+         // ...
       })
       .subscribe();
-
-    // 2.1 Initial Fetch (Delivery Orders)
-    const fetchDeliveryOrders = async () => {
-      const { data, error } = await supabase.from('delivery_orders').select('*');
-      if (!error && data) {
-        const remoteOrders = data.map(o => ({
-          id: o.id,
-          name: o.name,
-          type: 'delivery',
-          customer: o.customer,
-          deliveryAddress: o.delivery_address,
-          status: o.status,
-          items: o.items || [],
-          committedItems: o.committed_items || [],
-          startTime: o.start_time,
-          discount: o.discount || 0,
-          orderNumber: o.order_number
-        }));
-        setDeliveryOrders(remoteOrders);
-      }
-    };
-    fetchDeliveryOrders();
 
     // 3. Real-time Subscription (Delivery Orders)
     const deliverySubscription = supabase
       .channel('delivery_channel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_orders' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setDeliveryOrders(prev => [...prev, {
-            id: payload.new.id,
-            name: payload.new.name,
-            type: 'delivery',
-            customer: payload.new.customer,
-            deliveryAddress: payload.new.delivery_address,
-            status: payload.new.status,
-            items: payload.new.items || [],
-            committedItems: payload.new.committed_items || [],
-            startTime: payload.new.start_time,
-            discount: payload.new.discount || 0,
-            orderNumber: payload.new.order_number
-          }]);
-        } else if (payload.eventType === 'UPDATE') {
-          setDeliveryOrders(prev => prev.map(o => o.id === payload.new.id ? {
-            ...o,
-            name: payload.new.name,
-            customer: payload.new.customer,
-            deliveryAddress: payload.new.delivery_address,
-            status: payload.new.status,
-            items: payload.new.items || [],
-            committedItems: payload.new.committed_items || [],
-            startTime: payload.new.start_time,
-            discount: payload.new.discount || 0,
-            orderNumber: payload.new.order_number
-          } : o));
-        } else if (payload.eventType === 'DELETE') {
-          setDeliveryOrders(prev => prev.filter(o => o.id !== payload.old.id));
-        }
+         // ...
       })
       .subscribe();
 
     // 4. Print Job Listener (Mac/Desktop Only)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    let printSubscription = null;
-
-    if (!isMobile) {
-      console.log("Initializing Print Server Listener...");
-      printSubscription = supabase
-        .channel('print_jobs_channel')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'print_jobs' }, async (payload) => {
-          console.log("New Print Job Received:", payload.new.id);
-          const { content } = payload.new;
-          try {
-            await fetch('http://localhost:3001/print', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ html: content })
-            });
-            await supabase.from('print_jobs').update({ status: 'printed' }).eq('id', payload.new.id);
-          } catch (err) {
-            console.error("Failed to process print job:", err);
-          }
-        })
-        .subscribe((status) => {
-          console.log("Print Channel Status:", status);
-        });
-    } else {
-      // On mobile, we still want to show connected status based on other channels
-      // We can use the tables channel status
-    }
-
-    // Monitor connection via tables subscription
-    // Monitor connection via tables subscription
-    tablesSubscription.subscribe((status) => {
-      console.log("Tables Channel Status:", status);
-    });
+    // ...
+    */
 
     return () => {
-      tablesSubscription.unsubscribe();
-      deliverySubscription.unsubscribe();
-      if (printSubscription) printSubscription.unsubscribe();
+      // tablesSubscription.unsubscribe();
+      // deliverySubscription.unsubscribe();
+      // if (printSubscription) printSubscription.unsubscribe();
     };
   }, []);
 
