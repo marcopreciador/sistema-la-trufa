@@ -582,7 +582,7 @@ function POSApp() {
     setTipAmount(0);
   };
 
-  const confirmPayment = () => {
+  const confirmPayment = async () => {
     if (!activeOrder) return;
 
     const discount = activeOrder.discount || 0;
@@ -628,25 +628,62 @@ function POSApp() {
       customer: activeOrder.customer || null
     };
 
-    addSale({
-      items: allItems,
-      subtotal: subtotal,
-      discount: discount,
-      total: grandTotal,
-      tip: parseFloat(tipAmount || 0),
-      customer: activeOrder.customer || null,
-      userName: currentUser.name,
-      paymentMethod: selectedPaymentMethod,
-      orderNumber: finalOrderNumber,
-      sequence: finalOrderNumber,
-      tableName: originName,
-      status: 'completed'
-    });
+    try {
+      // 1. Save Sale to DB (Await confirmation)
+      setIsProcessing(true);
+      await addSale({
+        items: allItems,
+        subtotal: subtotal,
+        discount: discount,
+        total: grandTotal,
+        tip: parseFloat(tipAmount || 0),
+        customer: activeOrder.customer || null,
+        userName: currentUser.name,
+        paymentMethod: selectedPaymentMethod,
+        orderNumber: finalOrderNumber,
+        sequence: finalOrderNumber,
+        tableName: originName,
+        status: 'completed'
+      });
 
-    // Defer cleanup: Show Success Modal
-    setLastCompletedOrder(completedOrderData);
-    setShowSuccessModal(true);
-    setIsPaymentModalOpen(false);
+      // 2. Print Customer Ticket
+      TicketService.printCustomerTicket(
+        orderForTicket,
+        allItems,
+        subtotal,
+        currentUser,
+        selectedPaymentMethod,
+        discount,
+        tipAmount
+      );
+
+      // 3. Clear Table / Order
+      if (typeof activeOrder.id === 'number') {
+        const clearedTable = {
+          status: 'free',
+          items: [],
+          committedItems: [],
+          startTime: null,
+          mergedWith: null,
+          orderNumber: null
+        };
+        updateOrder(activeOrder.id, clearedTable); // Syncs to Supabase
+      } else {
+        setDeliveryOrders(prev => prev.filter(o => o.id !== activeOrder.id));
+        deleteDeliveryOrderFromSupabase(activeOrder.id); // Syncs to Supabase
+      }
+
+      // 4. Show Success & Close Modal
+      setLastCompletedOrder(completedOrderData);
+      setShowSuccessModal(true);
+      setIsPaymentModalOpen(false);
+
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      alert("Error crítico al guardar la venta. Verifique su conexión.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleFinishSale = () => {

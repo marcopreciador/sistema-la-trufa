@@ -83,7 +83,7 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
         performSearch();
     }, [phoneSearch, customers]);
 
-    const handleSaveAndSelect = (e) => {
+    const handleSaveAndSelect = async (e) => {
         e.preventDefault();
 
         // Validate
@@ -92,37 +92,42 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
             return;
         }
 
-        let finalCustomer;
+        try {
+            let finalCustomer;
 
-        if (existingCustomer) {
-            // Update existing if needed (Hot Editing)
-            const hasChanges = existingCustomer.name !== name || !existingCustomer.addresses.includes(selectedAddress);
+            if (existingCustomer) {
+                // Update existing if needed (Hot Editing)
+                const hasChanges = existingCustomer.name !== name || !existingCustomer.addresses.includes(selectedAddress);
 
-            if (hasChanges) {
-                const updatedAddresses = existingCustomer.addresses.includes(selectedAddress)
-                    ? existingCustomer.addresses
-                    : [...existingCustomer.addresses, selectedAddress];
+                if (hasChanges) {
+                    const updatedAddresses = existingCustomer.addresses.includes(selectedAddress)
+                        ? existingCustomer.addresses
+                        : [...existingCustomer.addresses, selectedAddress];
 
-                finalCustomer = {
-                    ...existingCustomer,
-                    name: name,
-                    addresses: updatedAddresses
-                };
-                updateCustomer(finalCustomer);
+                    finalCustomer = {
+                        ...existingCustomer,
+                        name: name,
+                        addresses: updatedAddresses
+                    };
+                    await updateCustomer(finalCustomer); // Await update
+                } else {
+                    finalCustomer = existingCustomer;
+                }
             } else {
-                finalCustomer = existingCustomer;
+                // Create New
+                finalCustomer = await addCustomer({
+                    name: name,
+                    phone: phoneSearch,
+                    addresses: [selectedAddress]
+                });
             }
-        } else {
-            // Create New
-            finalCustomer = addCustomer({
-                name: name,
-                phone: phoneSearch,
-                addresses: [selectedAddress]
-            });
-        }
 
-        onSelect(finalCustomer, selectedAddress);
-        onClose();
+            onSelect(finalCustomer, selectedAddress);
+            onClose();
+        } catch (error) {
+            console.error("Error saving customer:", error);
+            alert("Error al guardar cliente en la nube. Intente de nuevo.");
+        }
     };
 
     if (!isOpen) return null;
