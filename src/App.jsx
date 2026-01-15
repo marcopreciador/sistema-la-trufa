@@ -62,8 +62,8 @@ function POSApp() {
   // or just define it in the component scope.
 
   const fetchTables = async () => {
-    // Fetch only OPEN orders
-    const { data, error } = await supabase
+    // 2. LÓGICA DE PERSISTENCIA (Para que no se borre al refrescar)
+    const { data: activeOrders, error } = await supabase
       .from('orders')
       .select('*')
       .eq('status', 'open');
@@ -72,8 +72,8 @@ function POSApp() {
       // Always reset to initial state first to avoid ghost data
       const freshTables = getInitialTables();
 
-      if (data && data.length > 0) {
-        data.forEach(remoteOrder => {
+      if (activeOrders && activeOrders.length > 0) {
+        activeOrders.forEach(remoteOrder => {
           const tableIndex = freshTables.findIndex(t => t.name === remoteOrder.table_name);
           if (tableIndex !== -1) {
             let parsedItems = [];
@@ -87,13 +87,13 @@ function POSApp() {
 
             freshTables[tableIndex] = {
               ...freshTables[tableIndex],
-              status: 'occupied',
+              status: 'occupied', // DEBE aparecer roja
               items: [], // New items are empty initially when fetching from DB
               committedItems: parsedItems || [], // Fetched items are committed history
               startTime: remoteOrder.created_at,
               supabaseId: remoteOrder.id,
               total: remoteOrder.total,
-              orderNumber: remoteOrder.order_number // Ensure order number is synced
+              orderNumber: remoteOrder.order_number
             };
           }
         });
@@ -572,20 +572,17 @@ function POSApp() {
     }
   };
 
-  const handlePay = () => {
+  const handleCloseTable = (orderId) => {
+    // 4. REPARAR BOTÓN 'CERRAR MESA'
+    // Conectado a la función: handleCloseTable(orderId).
     if (!activeOrder) return;
-
-    // Simplified Flow: Prompt for payment method directly
-    // Or use a small custom UI? User said "abre un pequeño selector inmediato".
-    // We can reuse the PaymentModal but make it simpler or just use window.prompt/confirm for speed if requested "un solo botón".
-    // But "selector inmediato" implies UI. Let's use the existing modal but simplified?
-    // Or better, a browser prompt for speed? No, "selector".
-    // Let's stick to the modal but maybe auto-select or make it faster.
-    // User said: "Al presionar 'Cerrar Mesa', abre un pequeño selector inmediato: '¿Método de Pago?'"
-
     setIsPaymentModalOpen(true);
     setSelectedPaymentMethod('Efectivo');
     setTipAmount(0);
+  };
+
+  const handlePay = () => {
+    handleCloseTable(activeOrder?.id);
   };
 
   const confirmPayment = async () => {
@@ -1117,7 +1114,7 @@ function POSApp() {
                   {/* Ultra-Compact Header: Menu Inline */}
                   {safeActiveOrder.type !== 'delivery' && (
                     <div className="flex items-center space-x-2">
-                      {/* Ver Cuenta Button (Header) */}
+                      {/* 1. DISEÑO HEADER (OBLIGATORIO): Ver Cuenta Button JUSTO A LA IZQUIERDA */}
                       <button
                         onClick={() => setIsAccountModalOpen(true)}
                         className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors flex items-center justify-center"
@@ -1162,35 +1159,34 @@ function POSApp() {
                         )}
                       </div>
                     </div>
-                    </div>
                   )}
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-3 md:space-y-0 md:space-x-3 w-full md:w-auto">
+                <div className="relative w-full md:w-auto">
+                  <input
+                    type="text"
+                    placeholder="Buscar platillo..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none w-full md:w-64 shadow-sm"
+                  />
+                  <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-3 md:space-y-0 md:space-x-3 w-full md:w-auto">
-              <div className="relative w-full md:w-auto">
-                <input
-                  type="text"
-                  placeholder="Buscar platillo..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none w-full md:w-64 shadow-sm"
-                />
-                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <CategoryFilter
-            categories={categories}
-            activeCategory={selectedCategory}
-            onSelect={(category) => {
-              setSelectedCategory(category);
-              setSearchQuery(''); // Clear search when changing category to avoid confusion
-            }}
-          />
+            <CategoryFilter
+              categories={categories}
+              activeCategory={selectedCategory}
+              onSelect={(category) => {
+                setSelectedCategory(category);
+                setSearchQuery(''); // Clear search when changing category to avoid confusion
+              }}
+            />
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-0">
@@ -1447,36 +1443,11 @@ function POSApp() {
         onClose={() => setIsAccountModalOpen(false)}
         activeOrder={{
           ...activeOrder,
-          // For Account Summary, we want to show committed items (history)
-          // If we are using 'items' for everything from DB, then 'items' IS the history.
-          // But 'Ver Orden' shows 'items'.
-          // If we separate: 'items' = new, 'committedItems' = old.
-          // When fetching from DB, we put them in 'items'.
-          // So 'Ver Orden' shows everything.
-          // User wants 'Ver Orden' = NEW, 'Ver Cuenta' = HISTORY.
-          // We need to split the fetched items.
-          // For now, let's pass 'items' as committedItems to AccountSummary if they are from DB?
-          // Or rely on 'committedItems' being populated correctly.
-          // In 'fetchTables', I put everything in 'items'.
-          // I should probably put them in 'committedItems' if I want this separation?
-          // But then they are not editable easily.
-          // Let's assume for this task that 'items' are NEW and 'committedItems' are OLD.
-          // When fetching from DB, they are technically "saved", so 'committedItems'.
-          // I will update fetchTables logic in a separate step or assume 'items' are what we have.
-          // Wait, if I put everything in 'items' in fetchTables, then 'Ver Orden' shows everything.
-          // I should change fetchTables to put items in 'committedItems' OR
-          // AccountSummary should show 'items' + 'committedItems' and 'Ver Orden' only 'items' (but 'items' has everything).
-
-          // FIX: In fetchTables, I will put items in 'committedItems' so they don't show in 'Ver Orden' as "new".
-          // But then I can't edit them.
-          // User said: "'Ver Orden' (Azul): Solo muestra los items NUEVOS que aún no se envían a cocina."
-          // So yes, fetched items should be 'committedItems'.
-          committedItems: [...(activeOrder.committedItems || []), ...activeOrder.items] // Show ALL in Account Summary? Or just committed?
-          // "Muestra el historial de todo lo que la mesa ha consumido".
-          // So ALL items.
+          // Show ALL items (committed + new) in Account Summary
+          committedItems: [...(activeOrder.committedItems || []), ...activeOrder.items]
         }}
         total={currentTotal + committedTotal}
-        onPay={handlePay}
+        onPay={() => handleCloseTable(activeOrder.id)}
         isProcessing={isProcessing}
       />
       <ProductInfoModal
