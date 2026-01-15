@@ -16,6 +16,7 @@ import { CustomerDirectoryModal } from './components/CustomerDirectoryModal';
 import { LoginScreen } from './components/LoginScreen';
 import { PinModal } from './components/PinModal';
 import { SmartCartModal } from './components/SmartCartModal';
+import { AccountSummaryModal } from './components/AccountSummaryModal';
 import { ProductInfoModal } from './components/ProductInfoModal';
 import { InventoryView } from './components/InventoryView';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -56,54 +57,58 @@ function POSApp() {
 
 
   // Supabase Real-time Sync for Tables
+  // Define fetchTables outside useEffect to be reusable or use a ref if needed, 
+  // but for simplicity in this component structure, we can define it inside and put it in a useCallback if we were strict,
+  // or just define it in the component scope.
+
+  const fetchTables = async () => {
+    // Fetch only OPEN orders
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('status', 'open');
+
+    if (!error && data) {
+      setTables(prevTables => {
+        const newTables = getInitialTables(); // Reset to initial then merge? Or merge into prev?
+        // Better to merge into current state to preserve non-synced things if any?
+        // Actually, for full sync, we should map fresh.
+        // But we need to keep the structure.
+
+        const freshTables = getInitialTables();
+
+        data.forEach(remoteOrder => {
+          const tableIndex = freshTables.findIndex(t => t.name === remoteOrder.table_name);
+          if (tableIndex !== -1) {
+            let parsedItems = [];
+            try {
+              parsedItems = typeof remoteOrder.items === 'string'
+                ? JSON.parse(remoteOrder.items)
+                : remoteOrder.items;
+            } catch (e) {
+              parsedItems = [];
+            }
+
+            freshTables[tableIndex] = {
+              ...freshTables[tableIndex],
+              status: 'occupied',
+              items: [], // New items are empty initially when fetching from DB
+              committedItems: parsedItems || [], // Fetched items are committed history
+              startTime: remoteOrder.created_at,
+              supabaseId: remoteOrder.id,
+              total: remoteOrder.total
+            };
+          }
+        });
+        return freshTables;
+      });
+    }
+  };
+
   useEffect(() => {
     if (!supabase) return;
 
     // 1. Initial Fetch
-    const fetchTables = async () => {
-      // Fetch only OPEN orders
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('status', 'open');
-
-      if (!error && data) {
-        setTables(prevTables => {
-          const newTables = [...prevTables];
-          data.forEach(remoteOrder => {
-            const tableIndex = newTables.findIndex(t => t.name === remoteOrder.table_name);
-            if (tableIndex !== -1) {
-              // Parse items if string, or use directly if JSON
-              let parsedItems = [];
-              try {
-                parsedItems = typeof remoteOrder.items === 'string'
-                  ? JSON.parse(remoteOrder.items)
-                  : remoteOrder.items;
-              } catch (e) {
-                console.error("Error parsing items:", e);
-                parsedItems = [];
-              }
-
-              newTables[tableIndex] = {
-                ...newTables[tableIndex],
-                status: 'occupied', // Or 'ordering'? User said 'open' orders. 'occupied' seems safer for visual indication.
-                items: parsedItems || [],
-                committedItems: parsedItems || [], // Assume fetched items are committed? Or split? For simplicity, let's put them in committed or items. User said "items".
-                // Let's put them in items for now so they are editable, or committed if they are "saved".
-                // "Al modificar un pedido... Haz un upsert". If it's in DB, it's likely "committed" in a traditional POS, but here "items" are the active ones.
-                // Let's map to 'items' to be safe and editable.
-                items: parsedItems || [],
-                committedItems: [], // Reset committed to avoid duplication if we put everything in items
-                startTime: remoteOrder.created_at,
-                // We might need to store the Supabase ID to update the same row
-                supabaseId: remoteOrder.id
-              };
-            }
-          });
-          return newTables;
-        });
-      }
-    };
     fetchTables();
 
     // 2. Realtime Subscription
@@ -135,6 +140,7 @@ function POSApp() {
   const [isInventoryViewOpen, setIsInventoryViewOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(false);
 
   // POS State
@@ -570,6 +576,15 @@ function POSApp() {
 
   const handlePay = () => {
     if (!activeOrder) return;
+
+    // Simplified Flow: Prompt for payment method directly
+    // Or use a small custom UI? User said "abre un pequeño selector inmediato".
+    // We can reuse the PaymentModal but make it simpler or just use window.prompt/confirm for speed if requested "un solo botón".
+    // But "selector inmediato" implies UI. Let's use the existing modal but simplified?
+    // Or better, a browser prompt for speed? No, "selector".
+    // Let's stick to the modal but maybe auto-select or make it faster.
+    // User said: "Al presionar 'Cerrar Mesa', abre un pequeño selector inmediato: '¿Método de Pago?'"
+
     setIsPaymentModalOpen(true);
     setSelectedPaymentMethod('Efectivo');
     setTipAmount(0);
@@ -1372,7 +1387,19 @@ function POSApp() {
         </div>
       )}
       {/* Floating Cart Button (Mobile Only) */}
-      <div className="fixed bottom-4 right-4 z-40 md:hidden">
+      <div className="fixed bottom-4 right-4 z-40 md:hidden flex space-x-3">
+        {/* Ver Cuenta Button (Gray/White) */}
+        <button
+          onClick={() => setIsAccountModalOpen(true)}
+          className="bg-white text-gray-800 px-6 py-4 rounded-full shadow-xl border border-gray-200 flex items-center space-x-2 hover:bg-gray-50 active:scale-95 transition-all"
+        >
+          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <span className="font-bold text-lg">Ver Cuenta</span>
+        </button>
+
+        {/* Ver Orden Button (Blue) */}
         <button
           onClick={() => setIsCartOpen(true)}
           className="bg-blue-600 text-white px-6 py-4 rounded-full shadow-xl shadow-blue-600/30 flex items-center space-x-3 hover:bg-blue-700 active:scale-95 transition-all"
@@ -1398,7 +1425,7 @@ function POSApp() {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cartProps={{
-          items: activeOrder.items,
+          items: activeOrder.items, // Only new items
           activeOrder: activeOrder,
           total: currentTotal,
           committedTotal: committedTotal,
@@ -1413,6 +1440,44 @@ function POSApp() {
           onConfirmDelivery: handleConfirmDelivery,
           isProcessing: isProcessing
         }}
+      />
+
+      <AccountSummaryModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        activeOrder={{
+          ...activeOrder,
+          // For Account Summary, we want to show committed items (history)
+          // If we are using 'items' for everything from DB, then 'items' IS the history.
+          // But 'Ver Orden' shows 'items'.
+          // If we separate: 'items' = new, 'committedItems' = old.
+          // When fetching from DB, we put them in 'items'.
+          // So 'Ver Orden' shows everything.
+          // User wants 'Ver Orden' = NEW, 'Ver Cuenta' = HISTORY.
+          // We need to split the fetched items.
+          // For now, let's pass 'items' as committedItems to AccountSummary if they are from DB?
+          // Or rely on 'committedItems' being populated correctly.
+          // In 'fetchTables', I put everything in 'items'.
+          // I should probably put them in 'committedItems' if I want this separation?
+          // But then they are not editable easily.
+          // Let's assume for this task that 'items' are NEW and 'committedItems' are OLD.
+          // When fetching from DB, they are technically "saved", so 'committedItems'.
+          // I will update fetchTables logic in a separate step or assume 'items' are what we have.
+          // Wait, if I put everything in 'items' in fetchTables, then 'Ver Orden' shows everything.
+          // I should change fetchTables to put items in 'committedItems' OR
+          // AccountSummary should show 'items' + 'committedItems' and 'Ver Orden' only 'items' (but 'items' has everything).
+
+          // FIX: In fetchTables, I will put items in 'committedItems' so they don't show in 'Ver Orden' as "new".
+          // But then I can't edit them.
+          // User said: "'Ver Orden' (Azul): Solo muestra los items NUEVOS que aún no se envían a cocina."
+          // So yes, fetched items should be 'committedItems'.
+          committedItems: [...(activeOrder.committedItems || []), ...activeOrder.items] // Show ALL in Account Summary? Or just committed?
+          // "Muestra el historial de todo lo que la mesa ha consumido".
+          // So ALL items.
+        }}
+        total={currentTotal + committedTotal}
+        onPay={handlePay}
+        isProcessing={isProcessing}
       />
       <ProductInfoModal
         product={selectedInfoProduct}
