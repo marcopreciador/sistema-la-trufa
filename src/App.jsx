@@ -1112,9 +1112,8 @@ function POSApp() {
                   )}
 
                   {/* Ultra-Compact Header: Menu Inline */}
-                  {safeActiveOrder.type !== 'delivery' && (
-                    <div className="flex items-center space-x-2">
-                      {/* 1. DISEÑO HEADER (OBLIGATORIO): Ver Cuenta Button JUSTO A LA IZQUIERDA */}
+                  <div className="flex items-center space-x-2">
+                    {safeActiveOrder.type !== 'delivery' && (
                       <button
                         onClick={() => setIsAccountModalOpen(true)}
                         className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors flex items-center justify-center"
@@ -1124,42 +1123,42 @@ function POSApp() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                       </button>
+                    )}
 
-                      <div className="relative">
-                        <button
-                          onClick={() => setIsMoreOptionsOpen(!isMoreOptionsOpen)}
-                          className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                          </svg>
-                        </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setIsMoreOptionsOpen(!isMoreOptionsOpen)}
+                        className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
 
-                        {isMoreOptionsOpen && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setIsMoreOptionsOpen(false)}
-                            ></div>
-                            <div className="absolute left-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden animate-fade-in">
-                              <button
-                                onClick={() => {
-                                  hasMergedTables ? handleUnmergeTable() : setIsMergeModalOpen(true);
-                                  setIsMoreOptionsOpen(false);
-                                }}
-                                className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 text-sm font-medium flex items-center space-x-2"
-                              >
-                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                </svg>
-                                <span>{hasMergedTables ? 'Desvincular Mesas' : 'Unir Mesas'}</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      {isMoreOptionsOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setIsMoreOptionsOpen(false)}
+                          ></div>
+                          <div className="absolute left-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden animate-fade-in">
+                            <button
+                              onClick={() => {
+                                hasMergedTables ? handleUnmergeTable() : setIsMergeModalOpen(true);
+                                setIsMoreOptionsOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 text-sm font-medium flex items-center space-x-2"
+                            >
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                              <span>{hasMergedTables ? 'Desvincular Mesas' : 'Unir Mesas'}</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
