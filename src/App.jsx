@@ -481,6 +481,7 @@ function POSApp() {
 
     setShowSuccessModal(true);
     setLastCompletedOrder({ type: 'kitchen', table: activeOrder.name });
+    setIsCartOpen(false);
   };
 
   const handleVoidOrder = () => {
@@ -783,6 +784,7 @@ function POSApp() {
     setLastCompletedOrder(completedOrderData);
     setShowSuccessModal(true);
     setIsPaymentModalOpen(false);
+    setIsCartOpen(false);
   };
 
   const handleApplyDiscount = (amount) => {
