@@ -41,19 +41,8 @@ export function ProductProvider({ children }) {
         };
         fetchCustomers();
 
-        /*
-        // REALTIME DISABLED TEMPORARILY
-        // 2. Real-time Subscription
-        const subscription = supabase
-            .channel('clients_channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, (payload) => {
-                // ...
-            })
-            .subscribe();
-        */
-
         return () => {
-            // subscription.unsubscribe();
+            // Cleanup
         };
     }, []);
 

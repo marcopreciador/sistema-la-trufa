@@ -88,32 +88,8 @@ function POSApp() {
     };
     fetchTables();
 
-    /* 
-    // REALTIME DISABLED TEMPORARILY TO FIX LOOP
-    // 2. Real-time Subscription (Tables)
-    const tablesSubscription = supabase
-      .channel('tables_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables' }, (payload) => {
-         // ...
-      })
-      .subscribe();
-
-    // 3. Real-time Subscription (Delivery Orders)
-    const deliverySubscription = supabase
-      .channel('delivery_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'delivery_orders' }, (payload) => {
-         // ...
-      })
-      .subscribe();
-
-    // 4. Print Job Listener (Mac/Desktop Only)
-    // ...
-    */
-
     return () => {
-      // tablesSubscription.unsubscribe();
-      // deliverySubscription.unsubscribe();
-      // if (printSubscription) printSubscription.unsubscribe();
+      // Cleanup if needed
     };
   }, []);
 

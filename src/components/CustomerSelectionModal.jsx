@@ -138,7 +138,7 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
         } catch (error) {
             console.error("Error saving customer:", error);
             const status = error.status || error.code || 'Unknown';
-            alert(`Error de Conexión (${status}): ${error.message || 'Intente de nuevo'}`);
+            alert(`Error de Conexión: ${JSON.stringify(error, null, 2)}`);
         } finally {
             setIsSaving(false);
         }
