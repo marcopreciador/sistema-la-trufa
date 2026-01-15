@@ -140,7 +140,7 @@ export function ProductProvider({ children }) {
         const { error } = await supabase.from('clients').insert([payload]);
 
         if (error) {
-            console.error('CRITICAL: Error adding client to Supabase:', error);
+            console.error('CRITICAL: Error adding client to Supabase (FULL OBJECT):', error);
             throw error; // Throw to UI
         }
 

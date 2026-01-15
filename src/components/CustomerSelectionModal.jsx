@@ -136,9 +136,8 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
             onSelect(finalCustomer, selectedAddress);
             onClose();
         } catch (error) {
-            console.error("Error saving customer:", error);
-            const status = error.status || error.code || 'Unknown';
-            alert(`Error de Conexión: ${JSON.stringify(error, null, 2)}`);
+            console.error("Error saving customer (FULL OBJECT):", error);
+            alert(`Error al guardar cliente: ${JSON.stringify(error, null, 2)}`);
         } finally {
             setIsSaving(false);
         }
