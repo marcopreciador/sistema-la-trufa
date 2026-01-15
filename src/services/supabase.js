@@ -18,22 +18,5 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false
-    },
-    global: {
-        fetch: (url, options = {}) => {
-            return fetch(url, {
-                ...options,
-                mode: 'cors',
-                credentials: 'include',
-                headers: {
-                    ...options.headers,
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'x-my-custom-header': 'la-trufa',
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=minimal'
-                }
-            });
-        }
     }
 });
