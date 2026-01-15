@@ -24,7 +24,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'x-my-custom-header': 'la-trufa',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
         }
     }
 });
