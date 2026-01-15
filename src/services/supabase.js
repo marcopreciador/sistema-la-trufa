@@ -1,22 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 
 // ------------------------------------------------------------------
-// CREDENCIALES REALES (PEGAR AQUÍ)
+// CONFIGURACIÓN MAESTRA DE LA TRUFA (LLAVES ACTUALIZADAS)
 // ------------------------------------------------------------------
-const SUPABASE_URL = "https://fpgpuzvlyvovxuevlvon.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwZ3B1enZseXZvdnh1ZXZsdm9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY4OTIwMTgsImV4cCI6MjA1MjQ2ODAxOH0.S5cC16IkpXVCJ9.eyJpc3M3Mio0ZjZhMHYzZSBhYmYmZzZSiInJlZiI6Imptcm1tcGZzSIsInJlZiI6Imptcm1tcGZzIn0";
-// ------------------------------------------------------------------
+// Nota: La llave proporcionada pertenece al proyecto 'jmpasxonpslozbyoqdvv'.
+// Hemos ajustado la URL automáticamente para coincidir con la llave.
+const SUPABASE_URL = "https://jmpasxonpslozbyoqdvv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptcGFzeG9ucHNsb3pieW9xZHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNDY5MzEsImV4cCI6MjA4MzkyMjkzMX0.cPn2OecCabPo-wvkWAe3IrFEHOLXfD1qs3EZrNXxUo0";
 
-if (SUPABASE_URL.includes("your-project") || SUPABASE_ANON_KEY.includes("your-anon-key")) {
-    console.error("CRITICAL: Supabase Keys are still placeholders. Please paste real keys in src/services/supabase.js");
-} else {
-    console.log("Supabase Client Initializing with Hardcoded Keys...", { url: SUPABASE_URL });
-}
+console.log("Inicializando Conexión Segura con Supabase...", { project: "jmpasxonpslozbyoqdvv" });
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false
+    },
+    global: {
+        // BLINDAJE ANTI-BLOQUEO: Inyectamos las credenciales manualmente
+        // para que Chrome y Safari no rechacen la conexión.
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        fetch: (...args) => fetch(...args)
     }
 });
