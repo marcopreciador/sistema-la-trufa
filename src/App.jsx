@@ -45,10 +45,7 @@ function POSApp() {
   const { addSale } = useSales();
 
   // Global State
-  const [tables, setTables] = useState(() => {
-    const saved = localStorage.getItem('la-trufa-tables-state');
-    return saved ? JSON.parse(saved) : getInitialTables();
-  });
+  const [tables, setTables] = useState(getInitialTables());
 
   const [deliveryOrders, setDeliveryOrders] = useState(() => {
     const saved = localStorage.getItem('la-trufa-delivery-orders');
@@ -56,40 +53,130 @@ function POSApp() {
   });
 
   // Persistence Effects
-  useEffect(() => {
-    localStorage.setItem('la-trufa-tables-state', JSON.stringify(tables));
-  }, [tables]);
+
 
   // Supabase Real-time Sync for Tables
   useEffect(() => {
     if (!supabase) return;
 
-    // 1. Initial Fetch (Optional: Strategy - Local First or Remote First?)
-    // For tables, we want consistency. Let's fetch from Supabase and merge/override.
+    // 1. Initial Fetch
     const fetchTables = async () => {
-      const { data, error } = await supabase.from('restaurant_tables').select('*');
-      if (!error && data && data.length > 0) {
-        // Map Supabase data to local structure if needed
-        // Assuming Supabase structure matches local for simplicity, or we map it.
-        // If Supabase is empty, we might want to seed it?
-        // For now, let's just update local if data exists.
-        const remoteTables = data.map(t => ({
-          id: t.id,
-          name: t.name || `Mesa ${t.id}`,
-          status: t.status,
-          items: t.items || [],
-          committedItems: t.committed_items || [],
-          startTime: t.start_time,
-          mergedWith: t.merged_with,
-          orderNumber: t.order_number
-        }));
-        setTables(remoteTables);
+      // Fetch only OPEN orders
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('status', 'open');
+
+      if (!error && data) {
+        setTables(prevTables => {
+          const newTables = [...prevTables];
+          data.forEach(remoteOrder => {
+            const tableIndex = newTables.findIndex(t => t.name === remoteOrder.table_name);
+            if (tableIndex !== -1) {
+              // Parse items if string, or use directly if JSON
+              let parsedItems = [];
+              try {
+                parsedItems = typeof remoteOrder.items === 'string'
+                  ? JSON.parse(remoteOrder.items)
+                  : remoteOrder.items;
+              } catch (e) {
+                console.error("Error parsing items:", e);
+                parsedItems = [];
+              }
+
+              newTables[tableIndex] = {
+                ...newTables[tableIndex],
+                status: 'occupied', // Or 'ordering'? User said 'open' orders. 'occupied' seems safer for visual indication.
+                items: parsedItems || [],
+                committedItems: parsedItems || [], // Assume fetched items are committed? Or split? For simplicity, let's put them in committed or items. User said "items".
+                // Let's put them in items for now so they are editable, or committed if they are "saved".
+                // "Al modificar un pedido... Haz un upsert". If it's in DB, it's likely "committed" in a traditional POS, but here "items" are the active ones.
+                // Let's map to 'items' to be safe and editable.
+                items: parsedItems || [],
+                committedItems: [], // Reset committed to avoid duplication if we put everything in items
+                startTime: remoteOrder.created_at,
+                // We might need to store the Supabase ID to update the same row
+                supabaseId: remoteOrder.id
+              };
+            }
+          });
+          return newTables;
+        });
       }
     };
     fetchTables();
 
+    // 2. Realtime Subscription
+    const channel = supabase
+      .channel('table-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('Realtime Update:', payload);
+          const { eventType, new: newRecord, old: oldRecord } = payload;
+
+          if (eventType === 'INSERT' || eventType === 'UPDATE') {
+            if (newRecord.status === 'open') {
+              setTables(prevTables => {
+                const tableIndex = prevTables.findIndex(t => t.name === newRecord.table_name);
+                if (tableIndex !== -1) {
+                  // Avoid update loop if we just updated it? 
+                  // Ideally we check if content is different, but for now let's just update.
+
+                  let parsedItems = [];
+                  try {
+                    parsedItems = typeof newRecord.items === 'string'
+                      ? JSON.parse(newRecord.items)
+                      : newRecord.items;
+                  } catch (e) {
+                    parsedItems = [];
+                  }
+
+                  const updatedTable = {
+                    ...prevTables[tableIndex],
+                    status: 'occupied',
+                    items: parsedItems || [],
+                    committedItems: [], // Reset to avoid dupes
+                    startTime: newRecord.created_at,
+                    supabaseId: newRecord.id
+                  };
+
+                  // Optimization: Only update if changed (deep compare simplified)
+                  if (JSON.stringify(prevTables[tableIndex].items) !== JSON.stringify(updatedTable.items)) {
+                    const newTables = [...prevTables];
+                    newTables[tableIndex] = updatedTable;
+                    return newTables;
+                  }
+                }
+                return prevTables;
+              });
+            } else if (newRecord.status === 'closed' || newRecord.status === 'completed') {
+              // Close table if status changed to closed
+              setTables(prevTables => {
+                const tableIndex = prevTables.findIndex(t => t.name === newRecord.table_name);
+                if (tableIndex !== -1 && prevTables[tableIndex].status !== 'free') {
+                  const newTables = [...prevTables];
+                  newTables[tableIndex] = {
+                    ...newTables[tableIndex],
+                    status: 'free',
+                    items: [],
+                    committedItems: [],
+                    startTime: null,
+                    supabaseId: null
+                  };
+                  return newTables;
+                }
+                return prevTables;
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      // Cleanup if needed
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -272,17 +359,42 @@ function POSApp() {
 
   const syncTableToSupabase = async (table) => {
     if (!supabase) return;
+
+    // Only sync if it has items or is being closed
+    // If status is free, we might want to 'close' the order in DB or delete it?
+    // User said: "Al modificar un pedido... Haz un upsert inmediato a Supabase."
+
     try {
-      await supabase.from('restaurant_tables').upsert({
-        id: table.id,
-        name: table.name,
-        status: table.status,
-        items: table.items,
-        committed_items: table.committedItems,
-        start_time: table.startTime,
-        merged_with: table.mergedWith,
-        order_number: table.orderNumber
-      });
+      const total = (table.items || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      const payload = {
+        table_name: table.name,
+        status: table.status === 'free' ? 'closed' : 'open', // Map local status to DB status
+        items: table.items, // JSON
+        total: total,
+        updated_at: new Date().toISOString()
+      };
+
+      // If we have a supabaseId, use it to update. Otherwise, try to find open order or insert.
+      // Ideally, we should have the ID. 
+      // Simplified logic: Upsert based on table_name and status='open' might be tricky if multiple.
+      // Let's assume 1 open order per table.
+
+      // First, try to find an existing open order for this table
+      const { data: existing } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('table_name', table.name)
+        .eq('status', 'open')
+        .single();
+
+      if (existing) {
+        await supabase.from('orders').update(payload).eq('id', existing.id);
+      } else if (table.status !== 'free') {
+        // Only create new if not free
+        await supabase.from('orders').insert([payload]);
+      }
+
     } catch (error) {
       console.error("Error syncing table to Supabase:", error);
     }
