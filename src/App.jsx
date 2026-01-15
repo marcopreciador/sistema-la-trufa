@@ -68,15 +68,11 @@ function POSApp() {
       .select('*')
       .eq('status', 'open');
 
-    if (!error && data) {
-      setTables(prevTables => {
-        const newTables = getInitialTables(); // Reset to initial then merge? Or merge into prev?
-        // Better to merge into current state to preserve non-synced things if any?
-        // Actually, for full sync, we should map fresh.
-        // But we need to keep the structure.
+    if (!error) {
+      // Always reset to initial state first to avoid ghost data
+      const freshTables = getInitialTables();
 
-        const freshTables = getInitialTables();
-
+      if (data && data.length > 0) {
         data.forEach(remoteOrder => {
           const tableIndex = freshTables.findIndex(t => t.name === remoteOrder.table_name);
           if (tableIndex !== -1) {
@@ -96,12 +92,13 @@ function POSApp() {
               committedItems: parsedItems || [], // Fetched items are committed history
               startTime: remoteOrder.created_at,
               supabaseId: remoteOrder.id,
-              total: remoteOrder.total
+              total: remoteOrder.total,
+              orderNumber: remoteOrder.order_number // Ensure order number is synced
             };
           }
         });
-        return freshTables;
-      });
+      }
+      setTables(freshTables);
     }
   };
 
@@ -441,7 +438,8 @@ function POSApp() {
           mergedWith: null,
           status: 'free',
           items: [],
-          committedItems: []
+          committedItems: [],
+          orderNumber: null
         };
         syncTableToSupabase(unmergedTable); // Sync
         return unmergedTable;
@@ -1118,41 +1116,54 @@ function POSApp() {
 
                   {/* Ultra-Compact Header: Menu Inline */}
                   {safeActiveOrder.type !== 'delivery' && (
-                    <div className="relative">
+                    <div className="flex items-center space-x-2">
+                      {/* Ver Cuenta Button (Header) */}
                       <button
-                        onClick={() => setIsMoreOptionsOpen(!isMoreOptionsOpen)}
-                        className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors"
+                        onClick={() => setIsAccountModalOpen(true)}
+                        className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors flex items-center justify-center"
+                        title="Ver Cuenta"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                       </button>
 
-                      {isMoreOptionsOpen && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setIsMoreOptionsOpen(false)}
-                          ></div>
-                          <div className="absolute left-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden animate-fade-in">
-                            <button
-                              onClick={() => {
-                                hasMergedTables ? handleUnmergeTable() : setIsMergeModalOpen(true);
-                                setIsMoreOptionsOpen(false);
-                              }}
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 text-sm font-medium flex items-center space-x-2"
-                            >
-                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                              </svg>
-                              <span>{hasMergedTables ? 'Desvincular Mesas' : 'Unir Mesas'}</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsMoreOptionsOpen(!isMoreOptionsOpen)}
+                          className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                          </svg>
+                        </button>
+
+                        {isMoreOptionsOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => setIsMoreOptionsOpen(false)}
+                            ></div>
+                            <div className="absolute left-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 overflow-hidden animate-fade-in">
+                              <button
+                                onClick={() => {
+                                  hasMergedTables ? handleUnmergeTable() : setIsMergeModalOpen(true);
+                                  setIsMoreOptionsOpen(false);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 text-gray-700 text-sm font-medium flex items-center space-x-2"
+                              >
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                <span>{hasMergedTables ? 'Desvincular Mesas' : 'Unir Mesas'}</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                     </div>
                   )}
-                </div>
               </div>
             </div>
 
@@ -1388,17 +1399,6 @@ function POSApp() {
       )}
       {/* Floating Cart Button (Mobile Only) */}
       <div className="fixed bottom-4 right-4 z-40 md:hidden flex space-x-3">
-        {/* Ver Cuenta Button (Gray/White) */}
-        <button
-          onClick={() => setIsAccountModalOpen(true)}
-          className="bg-white text-gray-800 px-6 py-4 rounded-full shadow-xl border border-gray-200 flex items-center space-x-2 hover:bg-gray-50 active:scale-95 transition-all"
-        >
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <span className="font-bold text-lg">Ver Cuenta</span>
-        </button>
-
         {/* Ver Orden Button (Blue) */}
         <button
           onClick={() => setIsCartOpen(true)}
