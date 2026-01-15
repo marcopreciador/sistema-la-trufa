@@ -54,9 +54,26 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
                 if (remoteFound) {
                     setExistingCustomer(remoteFound);
                     setName(remoteFound.name);
-                    setAddresses(remoteFound.addresses || []);
-                    if (remoteFound.addresses && remoteFound.addresses.length > 0) {
-                        setSelectedAddress(remoteFound.addresses[0]);
+
+                    // Lógica de protección obligatoria
+                    let addressOptions = [];
+                    if (Array.isArray(remoteFound.addresses)) {
+                        addressOptions = remoteFound.addresses;
+                    } else if (typeof remoteFound.addresses === 'string') {
+                        try {
+                            addressOptions = JSON.parse(remoteFound.addresses);
+                            if (!Array.isArray(addressOptions)) addressOptions = [addressOptions];
+                        } catch (e) {
+                            addressOptions = [remoteFound.addresses];
+                        }
+                    } else if (remoteFound.addresses) {
+                        // Fallback for other truthy types
+                        addressOptions = [remoteFound.addresses];
+                    }
+
+                    setAddresses(addressOptions);
+                    if (addressOptions.length > 0) {
+                        setSelectedAddress(addressOptions[0]);
                     }
                     setIsNewCustomer(false);
                 } else if (localFound) {
@@ -72,9 +89,25 @@ export function CustomerSelectionModal({ isOpen, onClose, onSelect }) {
                     if (remoteFound) {
                         setExistingCustomer(remoteFound);
                         setName(remoteFound.name);
-                        setAddresses(remoteFound.addresses || []);
-                        if (remoteFound.addresses && remoteFound.addresses.length > 0) {
-                            setSelectedAddress(remoteFound.addresses[0]);
+
+                        // Lógica de protección obligatoria
+                        let addressOptions = [];
+                        if (Array.isArray(remoteFound.addresses)) {
+                            addressOptions = remoteFound.addresses;
+                        } else if (typeof remoteFound.addresses === 'string') {
+                            try {
+                                addressOptions = JSON.parse(remoteFound.addresses);
+                                if (!Array.isArray(addressOptions)) addressOptions = [addressOptions];
+                            } catch (e) {
+                                addressOptions = [remoteFound.addresses];
+                            }
+                        } else if (remoteFound.addresses) {
+                            addressOptions = [remoteFound.addresses];
+                        }
+
+                        setAddresses(addressOptions);
+                        if (addressOptions.length > 0) {
+                            setSelectedAddress(addressOptions[0]);
                         }
                         setIsNewCustomer(false);
                     } else {
