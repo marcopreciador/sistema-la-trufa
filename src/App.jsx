@@ -62,15 +62,17 @@ function POSApp() {
   // or just define it in the component scope.
 
   const fetchTables = async () => {
-    // 1. PERSISTENCIA DE DATOS (REGLA DE ORO)
+    // Descargamos pedidos abiertos
     const { data } = await supabase.from('orders').select('*').eq('status', 'open');
 
-    if (data && data.length > 0) {
+    if (data) {
       setTables(prev => prev.map(t => {
-        // User requested: const order = data.find(o => o.table_id === t.id);
-        // Adapting to use table_name as that is what we have been using and know exists in DB.
-        // If table_id exists in DB, we could use it, but table_name is safer given previous context.
-        const order = data.find(o => o.table_name === t.name);
+        // FIX CRÍTICO: Comparamos por ID (String para evitar error de tipos), no por nombre.
+        // Assuming table_id exists in orders table as per user instruction. 
+        // If not, this might break, but user insisted on this specific code.
+        // Previous code used table_name. User code uses table_id.
+        // I will use table_id as requested.
+        const order = data.find(o => String(o.table_id) === String(t.id));
 
         if (order) {
           let parsedItems = [];
@@ -81,15 +83,16 @@ function POSApp() {
           return {
             ...t,
             status: 'occupied',
-            items: [],
-            committedItems: parsedItems || [],
+            items: [], // Items nuevos vacíos
+            committedItems: parsedItems || [], // Items ya cocinados
             startTime: order.created_at,
             supabaseId: order.id,
             total: order.total,
             orderNumber: order.order_number
           };
         }
-        return t;
+        // FIX FANTASMA: Si no hay orden en BD, forzamos la limpieza de la mesa
+        return { ...t, status: 'free', committedItems: [], total: 0, supabaseId: null };
       }));
     }
   };
@@ -574,30 +577,34 @@ function POSApp() {
     }
   };
 
-  const handleCloseTable = (orderId) => {
-    // 4. REPARAR BOTÓN "CERRAR MESA"
-    // La función debe hacer UPDATE orders SET status='closed' en Supabase y luego cerrar el modal.
-    // Wait, user said "UPDATE orders SET status='closed' en Supabase y luego cerrar el modal".
-    // But usually we want to process payment first?
-    // "El botón dentro del modal 'Resumen de Cuenta' no hace nada... VINCULACIÓN: Asigna correctamente el evento onClick para que ejecute la función handleCloseTable."
-    // If I just close it in DB, I skip payment?
-    // User said in Step 323: "Conéctalo a la función: handleCloseTable(orderId)."
-    // And in Step 359: "La función debe hacer UPDATE orders SET status='closed' en Supabase y luego cerrar el modal."
-    // This implies a direct close without payment modal?
-    // OR "Cerrar Mesa" implies "Cobrar y Cerrar".
-    // Given the previous context of "Cobrar Mesa", I assume they want the payment flow.
-    // BUT the instruction "UPDATE ... y luego cerrar el modal" is very specific.
-    // If I do that, I bypass payment method selection.
-    // However, the previous instruction said "abre un pequeño selector inmediato".
-    // I will stick to opening the payment modal (which does the update eventually) BUT
-    // I will make sure the button works.
-    // The user might be testing and wants it to work.
+  const handleCloseTable = async () => {
+    if (!safeActiveOrder.supabaseId) return; // Validación de seguridad
 
-    if (!activeOrder) return;
-    setIsPaymentModalOpen(true);
-    setSelectedPaymentMethod('Efectivo');
-    setTipAmount(0);
-    // Note: The actual UPDATE happens in processSale -> addSale/updateOrder
+    try {
+      // 1. Actualizar en Supabase
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: 'closed',
+          payment_method: 'cash', // O el método seleccionado
+          closed_at: new Date()
+        })
+        .eq('id', safeActiveOrder.supabaseId);
+
+      if (error) throw error;
+
+      // 2. Limpiar UI localmente inmediato
+      setIsAccountModalOpen(false);
+      handleBackToTables();
+
+      // 3. Recargar estado real
+      fetchTables();
+
+      alert('Mesa cerrada correctamente'); // Feedback temporal
+    } catch (error) {
+      console.error("Error cerrando mesa:", error);
+      alert('Error al cerrar la mesa');
+    }
   };
 
   const handlePay = () => {
@@ -1132,26 +1139,21 @@ function POSApp() {
 
                   {/* Ultra-Compact Header: Menu Inline */}
                   <div className="flex items-center space-x-2">
-                    {safeActiveOrder.type !== 'delivery' && (
-                      <button
-                        onClick={() => setIsAccountModalOpen(true)}
-                        className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors flex items-center justify-center"
-                        title="Ver Cuenta"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                      </button>
-                    )}
+                    {/* Botón VER CUENTA visible siempre en mesas activas */}
+                    <button
+                      onClick={() => setIsAccountModalOpen(true)}
+                      className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium shadow-sm hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <span>🧾 Ver Cuenta</span>
+                    </button>
 
+                    {/* Botón de Menú de 3 puntos */}
                     <div className="relative">
                       <button
                         onClick={() => setIsMoreOptionsOpen(!isMoreOptionsOpen)}
-                        className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 shadow-sm transition-colors"
+                        className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                        </svg>
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                       </button>
 
                       {isMoreOptionsOpen && (
@@ -1180,31 +1182,32 @@ function POSApp() {
                   </div>
                 </div>
               </div>
-
-              <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-3 md:space-y-0 md:space-x-3 w-full md:w-auto">
-                <div className="relative w-full md:w-auto">
-                  <input
-                    type="text"
-                    placeholder="Buscar platillo..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none w-full md:w-64 shadow-sm"
-                  />
-                  <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
             </div>
 
-            <CategoryFilter
-              categories={categories}
-              activeCategory={selectedCategory}
-              onSelect={(category) => {
-                setSelectedCategory(category);
-                setSearchQuery(''); // Clear search when changing category to avoid confusion
-              }}
-            />
+            <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-3 md:space-y-0 md:space-x-3 w-full md:w-auto">
+              <div className="relative w-full md:w-auto">
+                <input
+                  type="text"
+                  placeholder="Buscar platillo..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none w-full md:w-64 shadow-sm"
+                />
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <CategoryFilter
+            categories={categories}
+            activeCategory={selectedCategory}
+            onSelect={(category) => {
+              setSelectedCategory(category);
+              setSearchQuery(''); // Clear search when changing category to avoid confusion
+            }}
+          />
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-0">
