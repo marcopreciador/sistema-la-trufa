@@ -205,20 +205,8 @@ function POSApp() {
   };
 
   const handleNewOrder = async (tableId = null) => {
-    // Silent Connection Check
-    const isOnline = await checkConnection();
-    if (!isOnline) {
-      alert(
-        "⚠️ ERROR CRÍTICO DE CONEXIÓN ⚠️\n\n" +
-        "No se detectaron credenciales válidas de Supabase.\n\n" +
-        "ACCIÓN REQUERIDA:\n" +
-        "1. Abra el archivo: src/services/supabase.js\n" +
-        "2. Pegue su URL en: const HARDCODED_URL\n" +
-        "3. Pegue su Key en: const HARDCODED_KEY\n" +
-        "4. Guarde el archivo y recargue."
-      );
-      return;
-    }
+    // Silent Connection Check removed per user request
+
 
     if (tableId) {
       // ... existing logic for table
@@ -1364,33 +1352,20 @@ function POSApp() {
         isOpen={isInfoModalOpen}
         onClose={() => setIsInfoModalOpen(false)}
       />
-      <ConnectionStatus isConnected={isConnected} />
+
     </div>
   );
 }
 
 
 
-import { ConnectionStatus } from './components/ConnectionStatus';
+
 
 // ... (existing imports)
 
 function App() {
   const [isReady, setIsReady] = useState(false);
-  const [isConnected, setIsConnected] = useState(false); // Connection State
 
-  // Silent Connection Test
-  const checkConnection = async () => {
-    if (!supabase) return false;
-    try {
-      const { count, error } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.error("Connection Check Failed:", err);
-      return false;
-    }
-  };
 
   useEffect(() => {
     const init = () => {
