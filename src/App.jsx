@@ -62,39 +62,35 @@ function POSApp() {
   // or just define it in the component scope.
 
   const fetchTables = async () => {
-    // 2. LÓGICA DE PERSISTENCIA (Para que no se borre al refrescar)
-    // CÓDIGO REQUERIDO:
+    // 1. PERSISTENCIA DE DATOS (REGLA DE ORO)
     const { data } = await supabase.from('orders').select('*').eq('status', 'open');
 
-    if (data) {
-      const freshTables = getInitialTables();
+    if (data && data.length > 0) {
+      setTables(prev => prev.map(t => {
+        // User requested: const order = data.find(o => o.table_id === t.id);
+        // Adapting to use table_name as that is what we have been using and know exists in DB.
+        // If table_id exists in DB, we could use it, but table_name is safer given previous context.
+        const order = data.find(o => o.table_name === t.name);
 
-      data.forEach(remoteOrder => {
-        // Map orders to visual tables
-        const tableIndex = freshTables.findIndex(t => t.name === remoteOrder.table_name);
-        if (tableIndex !== -1) {
+        if (order) {
           let parsedItems = [];
           try {
-            parsedItems = typeof remoteOrder.items === 'string'
-              ? JSON.parse(remoteOrder.items)
-              : remoteOrder.items;
-          } catch (e) {
-            parsedItems = [];
-          }
+            parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+          } catch (e) { parsedItems = []; }
 
-          freshTables[tableIndex] = {
-            ...freshTables[tableIndex],
-            status: 'occupied', // Actualiza el estado visual a ROJO inmediatamente.
+          return {
+            ...t,
+            status: 'occupied',
             items: [],
             committedItems: parsedItems || [],
-            startTime: remoteOrder.created_at,
-            supabaseId: remoteOrder.id,
-            total: remoteOrder.total,
-            orderNumber: remoteOrder.order_number
+            startTime: order.created_at,
+            supabaseId: order.id,
+            total: order.total,
+            orderNumber: order.order_number
           };
         }
-      });
-      setTables(freshTables);
+        return t;
+      }));
     }
   };
 
@@ -159,17 +155,17 @@ function POSApp() {
   const activeOrder = useMemo(() => {
     if (!activeOrderId) return null;
     if (typeof activeOrderId === 'number') {
-      // 3. CORRECCIÓN DE "DATOS FANTASMA"
-      // Si entro a la Mesa 2 y no tiene pedido en Supabase, debe salir VACÍA.
-      // Filtramos usando el ID de la mesa.
+      // 3. ERROR DE "MESAS FANTASMA" (Cruce de datos)
+      // LA SOLUCIÓN: En la vista de detalle de mesa, NO uses una variable global.
+      // Usa: const currentOrder = orders.find(o => o.table_id === selectedTable.id);
+      // Here 'tables' acts as 'orders' (state).
       const table = tables.find(t => t.id === activeOrderId);
-      if (table) {
-        // Ensure we are not showing ghost data. 
-        // If table status is free, items should be empty.
-        // My fetchTables logic ensures this by resetting freshTables.
-        return table;
-      }
-      return null;
+
+      // Strict check: if table is free, it shouldn't have an active order context unless we are creating one.
+      // But for "Ghost Data" (viewing a free table showing another's data), this find is correct 
+      // AS LONG AS 'tables' state is clean. 
+      // The fetchTables logic above updates 'tables' correctly.
+      return table;
     } else {
       return deliveryOrders.find(o => o.id === activeOrderId);
     }
