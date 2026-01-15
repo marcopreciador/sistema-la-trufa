@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function AccountSummaryModal({ isOpen, onClose, activeOrder, total, onPay, isProcessing }) {
+export function AccountSummaryModal({ isOpen, onClose, activeOrder, total, onPay: handleCloseTable, isProcessing }) {
     if (!isOpen || !activeOrder) return null;
 
     const committedItems = activeOrder.committedItems || [];
@@ -49,15 +49,10 @@ export function AccountSummaryModal({ isOpen, onClose, activeOrder, total, onPay
                 </div>
 
                 <button
-                    onClick={onPay}
-                    disabled={total === 0 || isProcessing}
-                    className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-all duration-200 
-                        ${total === 0
-                            ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                            : 'bg-green-600 hover:bg-green-700 active:scale-95 hover:shadow-green-600/30'
-                        }`}
+                    onClick={handleCloseTable}
+                    className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-green-700 active:scale-95 transition-all"
                 >
-                    {isProcessing ? 'Procesando...' : 'Cerrar Mesa'}
+                    Cerrar Mesa
                 </button>
             </div>
         </div>
